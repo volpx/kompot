@@ -1,0 +1,28 @@
+Ciao ese1!
+Problem constants:
+M: 1000
+Ea: 0
+Eb: 7.75
+Eh: 0.00775776
+a: 0
+b: 5
+h: 5e-05
+N: 100000
+P: 0
+P: 0.1
+P: 0.2
+P: 0.3
+P: 0.4
+P: 0.5
+P: 0.6
+P: 0.7
+P: 0.8
+P: 0.9
+Eigen Even 0: 0.496496
+Eigen Odd  1: 1.49725
+Eigen Even 2: 2.498
+Eigen Odd  3: 3.49875
+Eigen Even 4: 4.4995
+Eigen Odd  5: 5.49249
+Eigen Even 6: 6.49324
+Eigen Odd  7: 7.50175
