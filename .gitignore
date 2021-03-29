@@ -1,2 +1,7 @@
 # Gitignore
 build/
+
+.empty/
+.ipynb_checkpoints/
+ese1/main3_bessel
+.vscode/settings.json

@@ -1,0 +1,68 @@
+Ciao ese1!
+Problem constants:
+M: 1000
+Ea: 1.25
+Eb: 10.75
+Eh: 0.00950951
+a: 0
+b: 10
+h: 3.33333e-05
+N: 300000
+l: 0 P: 0
+l: 0 P: 0.1
+l: 0 P: 0.2
+l: 0 P: 0.3
+l: 0 P: 0.4
+l: 0 P: 0.5
+l: 0 P: 0.6
+l: 0 P: 0.7
+l: 0 P: 0.8
+l: 0 P: 0.9
+l: 1 P: 0
+l: 1 P: 0.1
+l: 1 P: 0.2
+l: 1 P: 0.3
+l: 1 P: 0.4
+l: 1 P: 0.5
+l: 1 P: 0.6
+l: 1 P: 0.7
+l: 1 P: 0.8
+l: 1 P: 0.9
+l: 2 P: 0
+l: 2 P: 0.1
+l: 2 P: 0.2
+l: 2 P: 0.3
+l: 2 P: 0.4
+l: 2 P: 0.5
+l: 2 P: 0.6
+l: 2 P: 0.7
+l: 2 P: 0.8
+l: 2 P: 0.9
+l: 3 P: 0
+l: 3 P: 0.1
+l: 3 P: 0.2
+l: 3 P: 0.3
+l: 3 P: 0.4
+l: 3 P: 0.5
+l: 3 P: 0.6
+l: 3 P: 0.7
+l: 3 P: 0.8
+l: 3 P: 0.9
+Eigenvalue n 0 l: 0: 1.50676    (1.5)
+Eigenvalue n 1 l: 0: 3.50375    (3.5)
+Eigenvalue n 2 l: 0: 5.50075    (5.5)
+Eigenvalue n 3 l: 0: 7.50726    (7.5)
+Eigenvalue n 4 l: 0: 9.50425    (9.5)
+Eigenvalue n 0 l: 1: 2.50526    (2.5)
+Eigenvalue n 1 l: 1: 4.50225    (4.5)
+Eigenvalue n 2 l: 1: 6.50876    (6.5)
+Eigenvalue n 3 l: 1: 8.50576    (8.5)
+Eigenvalue n 4 l: 1: 10.5028    (10.5)
+Eigenvalue n 0 l: 2: 3.50375    (3.5)
+Eigenvalue n 1 l: 2: 5.50075    (5.5)
+Eigenvalue n 2 l: 2: 7.50726    (7.5)
+Eigenvalue n 3 l: 2: 9.50425    (9.5)
+Eigenvalue n 0 l: 3: 4.50225    (4.5)
+Eigenvalue n 1 l: 3: 6.50876    (6.5)
+Eigenvalue n 2 l: 3: 8.50576    (8.5)
+Eigenvalue n 3 l: 3: 10.5028    (10.5)
