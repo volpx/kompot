@@ -1,12 +1,12 @@
 #include "bessel.hpp"
 
-double sf_bessel_jl(int l, double x)
+double sf_bessel_jl(const int l, const double x)
 {
-	if (l = -1)
+	if (l == -1)
 	{
 		return std::cos(x) / x;
 	}
-	else if (l = 0)
+	else if (l == 0)
 	{
 		return std::sin(x) / x;
 	}
@@ -16,17 +16,17 @@ double sf_bessel_jl(int l, double x)
 	}
 	else
 	{
-		return 1.0 / 0;
+		return NAN;
 	}
 }
 
-double sf_bessel_yl(int l, double x)
+double sf_bessel_yl(const int l, const double x)
 {
-	if (l = -1)
+	if (l == -1)
 	{
 		return std::sin(x) / x;
 	}
-	else if (l = 0)
+	else if (l == 0)
 	{
 		return -std::cos(x) / x;
 	}
@@ -36,6 +36,6 @@ double sf_bessel_yl(int l, double x)
 	}
 	else
 	{
-		return 1. / 0;
+		return NAN;
 	}
 }

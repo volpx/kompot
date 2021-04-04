@@ -62,6 +62,10 @@ main2_findenergy_3d: $(OBJS) $(OBJ_DIR)/main2_findenergy_3d.o
 	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
 main3_bessel: $(OBJS) $(OBJ_DIR)/main3_bessel.o
 	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)	
+main6: $(OBJS) $(OBJ_DIR)/main6.o
+	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
+main7: $(OBJS) $(OBJ_DIR)/main7.o
+	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
 
 # Mains rules
 $(OBJ_DIR)/%.o: %.cpp
