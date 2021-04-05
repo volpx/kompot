@@ -1,5 +1,5 @@
-#include "uniconst.hpp"
 #include "vector_help.hpp"
+#include "uniconst.hpp"
 
 #include <cstdint>
 #include <cmath>
@@ -7,7 +7,8 @@
 #include <vector>
 #include <fstream>
 
-#include "gsl/gsl_sf_bessel.h"
+#include <gsl/gsl_sf_bessel.h>
+#include <static_math/cmath.h>
 
 double V_LJ(const double r)
 {
@@ -34,92 +35,96 @@ int main()
 
 	// Reduced quantities
 	constexpr double hbar2_2m = (uni::hbar_r * uni::hbar_r) / (2 * m_r * (eps_r * uni::eV_to_J) * (sigma_r * uni::Ams_to_m) * (sigma_r * uni::Ams_to_m));
-	// const double B = 2. / 5. * std::sqrt(2 * m_r * (eps_r * uni::eV_to_J)) * (sigma_r * uni::Ams_to_m)/uni::hbar_r;
-	constexpr double B = 2.1314279016703604310513399109722040174046218740519483004507;
+	constexpr double B = 2. / 5. * smath::sqrt(1./hbar2_2m);
 
 	constexpr uint64_t N = 1e5; // number of mesh points
-	constexpr double a = 0.8;	// start included
-	constexpr double b = 15.;  // stop excluded
+	constexpr double a = 0.997;	// start included
+
 	// After this the particle is free, the wavefunction is a plane wave
-	constexpr double rmax= 5;
-
-	constexpr double h = (b - a) / N; // Mesh spacing
-	constexpr double h2 = h * h;
-
-	constexpr double r1 = 12;
-	constexpr uint64_t ir1 = (uint64_t)((r1 - a) / h);
-	constexpr uint64_t ir2 = N-1;
-	constexpr double r2 = a + ir2 * h;
-	static_assert(ir1 < N, "ir1 must be lower than N");
-	static_assert(ir2 < N, "ir2 must be lower than N");
+	constexpr double rmax= 5.;
+	constexpr double lam_wait_1=2.;
+	constexpr double lam_wait_2=3./4;
 
 	constexpr uint64_t M = 300;
-	constexpr double E_i = 0.1e-3 / eps_r;
-	constexpr double E_f = 4e-3 / eps_r;
+	// constexpr double E_i = 0.1e-3 / eps_r;
+	constexpr double E_i = 0.37e-3/eps_r;
+	constexpr double E_f = 3.7e-3 / eps_r;
 	constexpr double h_E = (E_f - E_i) / M;
+	constexpr double lambda_max=2.*M_PI/smath::sqrt(E_i/hbar2_2m);
 	std::vector<double> vE(M);
 	std::vector<double> sigma_tot(M);
 	arange(vE,E_i,h_E);
 
-	constexpr int lmax = 6;
+	constexpr int lmax = 8;
 
 	std::cout << "Probelm constants:"
-			  << "\neps_r:   " << eps_r << " eV"
-			  << "\nsigma_r: " << sigma_r << " Ams"
-			  << "\nm_r:     " << m_r << " kg"
-			  << "\nB:       " << B
-			  << "\nhbar2_2m:" << hbar2_2m
-			  << "\nN:       " << N
-			  << "\na:       " << a
-			  << "\nb:       " << b
-			  << "\nM:       " << M
-			  << "\nE_i:     " << E_i
-			  << "\nE_f:     " << E_f
-			  << "\nh_E:     " << h_E
-			  << "\n"
-			  << "\nrmax:    " << rmax
-			  << "\nr1:      " << r1
-			  << "\nr2:      " << r2
+			  << "\neps_r:      " << eps_r << " eV"
+			  << "\nsigma_r:    " << sigma_r << " Ams"
+			  << "\nm_r:        " << m_r << " kg"
+			  << "\nB:          " << B
+			  << "\nhbar2_2m:   " << hbar2_2m
+			  << "\nN:          " << N
+			  << "\na:          " << a
+			  << "\nM:          " << M
+			  << "\nE_i:        " << E_i
+			  << "\nE_f:        " << E_f
+			  << "\nh_E:        " << h_E
+			  << "\nlmax:       " << lmax
+			  << "\nrmax:       " << rmax
+			  << "\nlam_wait_1: " << lam_wait_1
+			  << "\nlam_wait_2: " << lam_wait_2
 			  << "\n"
 			  << std::endl;
 
 	std::vector<double> dl(lmax + 1);
 	std::vector<double> y(N);
 
-
-	std::vector<double> x(N);
-	for (uint64_t i = 0; i < N; i++)
-	{
-		x[i] = a + i * h;
-	}
-
 	// Loop over energies
-	// for (uint64_t m = 0; m<M; m++)
-	uint64_t m=M/2;
+	for (uint64_t m = 0; m<M; m++)
+	// uint64_t m=M/2;
 	{
-		double E=vE[m];
-		double k_out = std::sqrt(E / hbar2_2m);
+		// Extract energy
+		const double E=vE[m];
+		const double k_out = std::sqrt(E / hbar2_2m);
+		const double lambda=2.*M_PI/k_out;
+
+		// Redo the mesh
+		const double r1=rmax+lam_wait_1*lambda;
+		const double r2=r1+lam_wait_2*lambda;
+		const double h = (r2 - a) / N; // Mesh spacing
+		const double h2 = h * h;
+		const uint64_t ir1 = (r1-a) / h; 
+		const uint64_t ir2 = N-1;
+
+		
+		// std::cout<<x[ir1]<<' '<<x[ir2]<<' '<<ilambda*h<<std::endl;
 
 		// Loop over l values
-		// for (int l = 0; l <= lmax; l++)
-		int l=5;
+		for (int l = 0; l <= lmax; l++)
+		// int l=5;
 		{
 			// Initial conditions
-			y[0] = u(x[0],B,l);
-			y[1] = u(x[1],B,l);
+			y[0] = u(a+0*h,B,l);
+			y[1] = u(a+1*h,B,l);
 
 			// Numerov algorithm
-			double k_ii2 = E - (V_LJ(x[0]) + hbar2_2m * V_rot(x[0],l));
-			double k_i2 = E - (V_LJ(x[1]) + hbar2_2m * V_rot(x[1], l));
+			double k_ii2 = 1. / hbar2_2m * (E - (V_LJ(a + 0 * h) + hbar2_2m * V_rot(a + 0 * h, l)));
+			double k_i2 = 1. / hbar2_2m * (E - (V_LJ(a + 1 * h) + hbar2_2m * V_rot(a + 1 * h, l)));
 			double k2;
 			// std::cout << y[0] << " " << y[1] << " " << std::pow(B / x[1], 5.0) << std::endl;
 
-			// Loop over space
-			for (uint64_t i = 2; i < N; i++)
+			// Loop over space (can stop at ir2)
+			double x=a+2*h;
+			for (uint64_t i = 2; i < N && i <= ir2 ; i++)
 			{
 
 				// New k
-				k2 = E - ((x[i] < rmax) ? V_LJ(x[i]) + hbar2_2m * V_rot(x[i], l) : hbar2_2m * V_rot(x[i], l));
+				k2 = 1. / hbar2_2m * 
+					(E - (
+						(x < rmax) ?
+						V_LJ(x) + hbar2_2m * V_rot(x, l) : 
+						hbar2_2m * V_rot(x, l))
+						);
 
 				y[i] = (2. * y[i - 1] * (1. - 5. / 12 * h2 * k_i2) - y[i - 2] *
 						 (1. + 1. / 12 * h2 * k_ii2)) /
@@ -128,6 +133,7 @@ int main()
 				// Move down the k for next iteration
 				k_ii2 = k_i2;
 				k_i2 = k2;
+				x+=h;
 			}
 
 			// Phase shift
@@ -140,14 +146,14 @@ int main()
 
 			// std::cout << l << " " << tan_dl << " " << dl[l] << " " << std::endl;
 
-			std::ofstream file{"data/Scatter.dat"};
-			file << "#x y(l)\n";
-			for (uint64_t i = 0; i < N; i++)
-			{
-				// Save the result
-				file << x[i] << ' ' << y[i] << '\n';
-			}
-			file.close();
+			// std::ofstream file{"data/Scatter.dat"};
+			// file << "#x y(l)\n";
+			// for (uint64_t i = 0; i < N; i++)
+			// {
+			// 	// Save the result
+			// 	file << x[i] << ' ' << y[i] << '\n';
+			// }
+			// file.close();
 
 		}
 
