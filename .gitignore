@@ -3,5 +3,5 @@ build/
 
 .empty/
 .ipynb_checkpoints/
-.vscode/settings.json
+.vscode/
 
