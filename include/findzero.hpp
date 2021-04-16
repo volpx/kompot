@@ -1,5 +1,4 @@
-#ifndef __FINDZERO_HPP__
-#define __FINDZERO_HPP__
+#pragma once
 
 #include <cstdint>
 #include <cmath>
@@ -7,8 +6,10 @@
 
 double findzero_secants_xeps(
 	std::function<double(double)> F,
-     double x0,double x1,const double epsilon,
+     double x0,double x1,const double xeps,
 	const double xmin,const double xmax);
 
-
-#endif // __FINDZERO_HPP__
+double findzero_secants_yeps(
+	std::function<double(double)> F,
+	 double x0, double x1, const double yeps,
+	const double xmin, const double xmax);
