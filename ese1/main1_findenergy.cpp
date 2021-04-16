@@ -102,7 +102,6 @@ int main()
 
 		vy_xmax_even[j]=y_even[N-1];
 		vy_xmax_odd[j]=y_odd[N-1];
-		
 	}
 
 	std::ofstream file{"data/energy1.dat"};
@@ -117,15 +116,18 @@ int main()
 	}
 
 	// Print best estimate of Energy eigenvalues
-	uint64_t i=1,ii=0,tmp;
+	uint64_t ii=0;
 	// uint64_t j=0;
-	for (uint64_t i=1;i<M;i++){
-		if (vy_xmax_even[i+1]*vy_xmax_even[i]<0){
-			std::cout<<"Eigen Even "<< ii++ << ": "<<vE[i]<<'\n';
-			
+	for (uint64_t i=0;i<M-1;i++){
+		if (vy_xmax_even[i]*vy_xmax_even[i+1]<0){
+			std::cout << "Eigen Even " << ii++ << ": " 
+				<< vE[i + 1] - (vE[i + 1] - vE[i]) / (vy_xmax_even[i + 1] - vy_xmax_even[i]) * vy_xmax_even[i + 1] 
+				<< '\n';
 		}
-		if(vy_xmax_odd[i+1]*vy_xmax_odd[i]<0){
-			std::cout<<"Eigen Odd  "<< ii++ << ": "<<vE[i]<<'\n';
+		if(vy_xmax_odd[i]*vy_xmax_odd[i+1]<0){
+			std::cout<<"Eigen Odd  "<< ii++ << ": "
+				<<vE[i+1]-(vE[i+1]-vE[i])/(vy_xmax_odd[i+1]-vy_xmax_odd[i])*vy_xmax_odd[i+1]
+				<<'\n';
 		}
 	}
 

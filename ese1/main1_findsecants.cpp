@@ -65,8 +65,6 @@ int main()
 		}
 
 		// Initialization
-		// y[0]=y_true(x[0], 0);
-		// y[1]=y_true(x[1], 0);
 		y_even[0]=1;
 		y_even[1]=1*std::exp(-0.5*x[1]*x[1]);
 		
@@ -84,6 +82,7 @@ int main()
 			// New k
 			k2 = 2.*(E - V(x[i]));
 
+			// Compute next points
 			y_even[i] = (
 				2.*y_even[i - 1] * (1. - 5. / 12 * h2 * k_i2) 
 				- y_even[i - 2] * (1. + 1. / 12 * h2 * k_ii2 )) 
@@ -99,6 +98,7 @@ int main()
 			k_i2 = k2;
 		}
 
+		// Save last point
 		vy_xmax_even[j]=y_even[N-1];
 		vy_xmax_odd[j]=y_odd[N-1];
 		

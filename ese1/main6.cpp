@@ -1,4 +1,5 @@
 #include "vector_help.hpp"
+#include "uniconst.hpp"
 
 #include <cstdint>
 #include <cmath>
@@ -6,99 +7,114 @@
 #include <vector>
 #include <fstream>
 
-#include "gsl/gsl_sf_bessel.h"
+#include <gsl/gsl_sf_bessel.h>
+#include <static_math/cmath.h>
 
 double V_LJ(const double r)
 {
 	return (4.0 * (std::pow(r,-12.0)-std::pow(r,-6.0)));
 }
 
-double V_eff(const double r, const int l)
+double V_rot(const double r, const int l)
 {
-	return (V_LJ(r) + 0.5 * l * (l + 1) / (r * r));
+	return (l * (l + 1) / (r * r));
 }
 
+double u(const double r,const double B,const int l){
+	return std::exp(-B * std::pow(r, -5.0));
+}
 
 int main()
 {
 	std::cout << "Ciao ese6!" << std::endl;
 
-	constexpr double eps = 5.9e-3; // eV
-	constexpr double sigma = 3.18; // Ams
+	// Physical quantities
+	constexpr double eps_r = 5.9e-3; // eV
+	constexpr double sigma_r = 3.18; // Ams
+	constexpr double m_r =  (1. / (1 / (83.798) + 1 / (1.008)))*uni::Da_to_kg ; // kg
 
-	constexpr double B = 2.0 / 5;
+	// Reduced quantities
+	constexpr double hbar2_2m = (uni::hbar_r * uni::hbar_r) / (2 * m_r * (eps_r * uni::eV_to_J) * (sigma_r * uni::Ams_to_m) * (sigma_r * uni::Ams_to_m));
+	constexpr double B = 2. / 5. * smath::sqrt(1./hbar2_2m);
 
-	constexpr uint64_t N = 1e4; // number of mesh points
-	constexpr double a = 0.5;	// start included
-	constexpr double b = 50.;	// stop excluded
-	constexpr double rmax= 5.0;
+	constexpr uint64_t N = 1e5; // number of mesh points
+	constexpr double a = 0.8;	// start included
 
-	constexpr double h = (b - a) / N; // Mesh spacing
-	constexpr double h2 = h * h;
+	// After this the particle is free, the wavefunction is a plane wave
+	constexpr double rmax= 5.;
+	constexpr double lam_wait_1=2.;
+	constexpr double lam_wait_2=3./4;
 
-	constexpr double r1 = 25;
-	constexpr uint64_t ir1 = (uint64_t)((r1 - a) / h);
-	constexpr double r2 = b - 0.1;
-	constexpr uint64_t ir2 = (uint64_t)((r2 - a) / h);
-	static_assert(ir1 < N, "ir1 must be lower than N");
-	static_assert(ir2 < N, "ir2 must be lower than N");
+	constexpr uint64_t M = 300;
+	constexpr double E = 0.3;
+	constexpr double lambda_max = 2.*M_PI/smath::sqrt(E/hbar2_2m);
 
-	constexpr uint64_t M = 1e3;
-	constexpr double E_i = 0.1e-3 / eps;
-	constexpr double E_f = 3.5e-3 / eps;
-	constexpr double h_E = (E_f - E_i) / M;
-	std::vector<double> vE(M);
-	std::vector<double> sigma_tot(M);
-	arange(vE,E_i,h_E);
+	constexpr int lmax = 8;
 
 	std::cout << "Probelm constants:"
-			  << "\neps:\t" << eps
-			  << "\nsigma:\t" << sigma
-			  << "\nN:\t" << N
-			  << "\na:\t" << a
-			  << "\nb:\t" << b
-			  << "\nM:\t" << M
-			  << "\nE_i:\t" << E_i
-			  << "\nE_f:\t" << E_f
-			  << "\nh_E:\t" << h_E
-			  << "\nr1:\t" << r1
-			  << "\nir1:\t" << ir1
-			  << "\nr2:\t" << r2
-			  << "\nir2:\t" << ir2
+			  << "\neps_r:      " << eps_r << " eV"
+			  << "\nsigma_r:    " << sigma_r << " Ams"
+			  << "\nm_r:        " << m_r << " kg"
+			  << "\nB:          " << B
+			  << "\nhbar2_2m:   " << hbar2_2m
+			  << "\nN:          " << N
+			  << "\na:          " << a
+			  << "\nM:          " << M
+			  << "\nE:          " << E
+			  << "\nlmax:       " << lmax
+			  << "\nrmax:       " << rmax
+			  << "\nlam_wait_1: " << lam_wait_1
+			  << "\nlam_wait_2: " << lam_wait_2
+			  << "\nPotential values"
+			  << "\nV_LJ(rmax):       " << V_LJ(rmax)
+			  << "\nV_rot(rmax,1):    " << hbar2_2m * V_rot(rmax, 1)
+			  << "\nV_rot(rmax,lmax): " << hbar2_2m * V_rot(rmax, lmax)
+			  << "\n"
 			  << std::endl;
 
-	constexpr int lmax = 6;
 	std::vector<double> dl(lmax + 1);
 	std::vector<double> y(N);
 
+	const double k_out = std::sqrt(E / hbar2_2m);
+	const double lambda=2.*M_PI/k_out;
 
-	std::vector<double> x(N);
-	for (uint64_t i = 0; i < N; i++)
-	{
-		x[i] = a + i * h;
-	}
+	// Redo the mesh
+	const double r1=rmax+lam_wait_1*lambda;
+	const double r2=r1+lam_wait_2*lambda;
+	const double h = (r2 - a) / N; // Mesh spacing
+	const double h2 = h * h;
+	const uint64_t ir1 = (r1-a) / h; 
+	const uint64_t ir2 = N-1;
 
+	
+	std::cout<<rmax<<' '<<r1<<' '<<r2<<std::endl;
 
-	double E=0.3;
-	double k_out = std::sqrt(E);
-
+	// Loop over l values
 	for (int l = 0; l <= lmax; l++)
+	// int l=0;
 	{
 		// Initial conditions
-		y[0] = std::exp(-std::pow(B / x[0], 5.0));
-		y[1] = std::exp(-std::pow(B / x[1], 5.0));
+		y[0] = u(a+0*h,B,l);
+		y[1] = u(a+1*h,B,l);
 
 		// Numerov algorithm
-		double k_ii2 =(E - V_eff(x[0], l));
-		double k_i2 = (E - V_eff(x[1], l));
+		double k_ii2 = 1. / hbar2_2m * (E - (V_LJ(a + 0 * h) + hbar2_2m * V_rot(a + 0 * h, l)));
+		double k_i2 = 1. / hbar2_2m * (E - (V_LJ(a + 1 * h) + hbar2_2m * V_rot(a + 1 * h, l)));
 		double k2;
 		// std::cout << y[0] << " " << y[1] << " " << std::pow(B / x[1], 5.0) << std::endl;
 
-		for (uint64_t i = 2; i < N; i++)
+		// Loop over space (can stop at ir2)
+		double x=a+2*h;
+		for (uint64_t i = 2; i < N && i <= ir2 ; i++)
 		{
 
 			// New k
-			k2 =   (E - V_eff(x[i], l));
+			k2 = 1. / hbar2_2m * 
+				(E - (
+					(x < rmax) ?
+					V_LJ(x) + hbar2_2m * V_rot(x, l) : 
+					hbar2_2m * V_rot(x, l))
+					);
 
 			y[i] = (2. * y[i - 1] * (1. - 5. / 12 * h2 * k_i2) - y[i - 2] *
 						(1. + 1. / 12 * h2 * k_ii2)) /
@@ -107,7 +123,7 @@ int main()
 			// Move down the k for next iteration
 			k_ii2 = k_i2;
 			k_i2 = k2;
-
+			x+=h;
 		}
 
 		// Phase shift
@@ -117,41 +133,34 @@ int main()
 						(K * gsl_sf_bessel_yl(l, k_out * r2) - gsl_sf_bessel_yl(l, k_out * r1));
 
 		dl[l] = std::atan(tan_dl);
-		// std::cout << l << " " << tan_dl << " " << dl[l] << " " << y[(uint64_t)(r2 / h)] << std::endl;
+
+		// std::cout
+		// 	<< l
+		// 	<< "\t" << tan_dl
+		// 	<< "\t" << dl[l]
+		// 	<< "\t" << (2 * l + 1) * std::pow(std::sin(dl[l]), 2.0)
+		// 	<< std::endl;
+
+
 	}
 
-	// sigma_tot[m] = 0;
-	// for (int l = 0; l <= lmax; l++)
-	// {
-	// 	sigma_tot[m] += (2 * l + 1) * std::pow(std::sin(dl[l]), 2.0);
-	// }
-	// sigma_tot[m] *= 4 * M_PI / (k_out * k_out);
-	
-	// if (m % 100 == 0)
-	// {
-	// 	std::cout << "m: " << m << " P: " << 1.0 * m / M << std::endl;
-	// }
-	
-
-	std::ofstream file{"data/Scatter.dat"};
-	file << "#x y(l)\n";
-	for (uint64_t i = 0; i < N; i++)
-	{
-		// Save the result
-		file << x[i] << ' ' << y[i] << '\n';
+	std::ofstream file{"data/dla0.8.dat"};
+	file<<"#l dl (2l+1)sin^2(dl)\n";
+	for (int l=0 ; l<=lmax;l++){
+		file
+			<< l << ' '
+			<< dl[l] << ' '
+			<< (2 * l + 1) * std::pow(std::sin(dl[l]), 2.0)
+			<< '\n';
 	}
 	file.close();
 
-	// for (int l=0;l<=lmax;l++)
-	// 	std::cout << "l: " << l << "\tdl: " << dl[l] << std::endl;
-
-	// Save sigma_tot
-	// std::ofstream file{"data/sigma_tot.dat"};
-	// file << "#E sigma_tot\n";
-	// for (uint64_t m = 0; m < M; m++)
+	// std::ofstream file{"data/Emaxl0.dat"};
+	// file << "#x y(0)\n";
+	// for (uint64_t i = 0; i < N; i++)
 	// {
 	// 	// Save the result
-	// 	file << vE[m] << ' ' << sigma_tot[m] << '\n';
+	// 	file << a+i*h << ' ' << y[i] << '\n';
 	// }
 	// file.close();
 

@@ -26,15 +26,17 @@ double u(const double r,const double B,const int l){
 
 int main()
 {
-	std::cout << "Ciao ese6!" << std::endl;
+	std::cout << "Ciao ese7!" << std::endl;
 
 	// Physical quantities
 	constexpr double eps_r = 5.9e-3; // eV
 	constexpr double sigma_r = 3.18; // Ams
-	constexpr double m_r =  (1. / (1 / (83.798) + 1 / (1.008)))*uni::Da_to_kg ; // kg
+	constexpr double m_r = (1./(1./(83.798)+1./(1.008))) * uni::Da_to_kg ; // kg
 
 	// Reduced quantities
-	constexpr double hbar2_2m = (uni::hbar_r * uni::hbar_r) / (2 * m_r * (eps_r * uni::eV_to_J) * (sigma_r * uni::Ams_to_m) * (sigma_r * uni::Ams_to_m));
+	constexpr double hbar2_2m = (uni::hbar_r * uni::hbar_r) /
+		(2 * m_r * (eps_r * uni::eV_to_J) * (sigma_r * uni::Ams_to_m)
+		* (sigma_r * uni::Ams_to_m));
 	constexpr double B = 2. / 5. * smath::sqrt(1./hbar2_2m);
 
 	constexpr uint64_t N = 1e5; // number of mesh points
@@ -46,8 +48,7 @@ int main()
 	constexpr double lam_wait_2=3./4;
 
 	constexpr uint64_t M = 300;
-	// constexpr double E_i = 0.1e-3 / eps_r;
-	constexpr double E_i = 0.37e-3/eps_r;
+	constexpr double E_i = 0.37e-3 / eps_r;
 	constexpr double E_f = 3.7e-3 / eps_r;
 	constexpr double h_E = (E_f - E_i) / M;
 	constexpr double lambda_max=2.*M_PI/smath::sqrt(E_i/hbar2_2m);
@@ -71,8 +72,13 @@ int main()
 			  << "\nh_E:        " << h_E
 			  << "\nlmax:       " << lmax
 			  << "\nrmax:       " << rmax
+			  << "\nmanbda_max: " << lambda_max
 			  << "\nlam_wait_1: " << lam_wait_1
 			  << "\nlam_wait_2: " << lam_wait_2
+			  << "\nPotential values"
+			  << "\nV_LJ(rmax):       " << V_LJ(rmax)
+			  << "\nV_rot(rmax,1):    " << hbar2_2m * V_rot(rmax, 1)
+			  << "\nV_rot(rmax,lmax): " << hbar2_2m * V_rot(rmax, lmax)
 			  << "\n"
 			  << std::endl;
 
@@ -108,8 +114,10 @@ int main()
 			y[1] = u(a+1*h,B,l);
 
 			// Numerov algorithm
-			double k_ii2 = 1. / hbar2_2m * (E - (V_LJ(a + 0 * h) + hbar2_2m * V_rot(a + 0 * h, l)));
-			double k_i2 = 1. / hbar2_2m * (E - (V_LJ(a + 1 * h) + hbar2_2m * V_rot(a + 1 * h, l)));
+			double k_ii2 = 1. / hbar2_2m * 
+				(E - (V_LJ(a + 0 * h) + hbar2_2m * V_rot(a + 0 * h, l)));
+			double k_i2 = 1. / hbar2_2m * 
+				(E - (V_LJ(a + 1 * h) + hbar2_2m * V_rot(a + 1 * h, l)));
 			double k2;
 			// std::cout << y[0] << " " << y[1] << " " << std::pow(B / x[1], 5.0) << std::endl;
 
@@ -139,8 +147,11 @@ int main()
 			// Phase shift
 			double K = y[ir1] * r2 / (y[ir2] * r1);
 			// std::cout << l<< k_out *r2 <<std::endl;
-			double tan_dl = (K * gsl_sf_bessel_jl(l, k_out * r2) - gsl_sf_bessel_jl(l, k_out * r1)) /
-							(K * gsl_sf_bessel_yl(l, k_out * r2) - gsl_sf_bessel_yl(l, k_out * r1));
+			double tan_dl = 
+				(K * gsl_sf_bessel_jl(l, k_out * r2) 
+				 - gsl_sf_bessel_jl(l, k_out * r1)) /
+				(K * gsl_sf_bessel_yl(l, k_out * r2) 
+				 - gsl_sf_bessel_yl(l, k_out * r1));
 
 			dl[l] = std::atan(tan_dl);
 

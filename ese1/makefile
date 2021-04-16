@@ -19,13 +19,13 @@ RM          = rm -f
 
 # Flags
 COMMON_FLAGS= -O3 -Wall -Wpedantic -Wextra -mavx2
-CPP_FLAGS   = $(COMMON_FLAGS) -I$(INC_DIR) -std=c++14
-C_FLAGS     = $(COMMON_FLAGS) -I$(INC_DIR)
+CXXFLAGS   = $(COMMON_FLAGS) -I$(INC_DIR) -std=c++14
+CFLAGS     = $(COMMON_FLAGS) -I$(INC_DIR)
 ASM_FLAGS   = $(COMMON_FLAGS) -I$(INC_DIR)
 LIBS        =  -lgsl -lgslcblas # -lboost_iostreams -lboost_system -lboost_filesystem
-L_FLAGS     = $(LIBS)
+LDFLAGS     = $(LIBS)
 
-# CPP_FLAGS += -DDEBUG
+# CXXFLAGS += -DDEBUG
 
 # Header files
 # _DEPS       =
@@ -55,34 +55,42 @@ endif
 
 # Rules
 main1: $(OBJS) $(OBJ_DIR)/main1.o
-	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main1_plot: $(OBJS) $(OBJ_DIR)/main1_plot.o
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 main1_findenergy: $(OBJS) $(OBJ_DIR)/main1_findenergy.o
-	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 main2_findenergy_3d: $(OBJS) $(OBJ_DIR)/main2_findenergy_3d.o
-	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main2_findenergy_3d_precise: $(OBJS) $(OBJ_DIR)/main2_findenergy_3d_precise.o
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 main3_bessel: $(OBJS) $(OBJ_DIR)/main3_bessel.o
-	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)	
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)	
 main6: $(OBJS) $(OBJ_DIR)/main6.o
-	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 main7: $(OBJS) $(OBJ_DIR)/main7.o
-	$(CPP) -o $@ $^ $(CPP_FLAGS) $(L_FLAGS)
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main2_plot: $(OBJS) $(OBJ_DIR)/main2_plot.o
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main6_smallvariations: $(OBJS) $(OBJ_DIR)/main6_smallvariations.o
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 # Mains rules
 $(OBJ_DIR)/%.o: %.cpp
-	$(CPP) -c -o $@ $< $(CPP_FLAGS)
+	$(CPP) -c -o $@ $< $(CXXFLAGS)
 
 $(OBJ_DIR)/%.o: %.c
-	$(C) -c -o $@ $< $(C_FLAGS)
+	$(C) -c -o $@ $< $(CFLAGS)
 
 $(OBJ_DIR)/%.o: %.asm
 	$(C) -c -o $@ $< $(ASM_FLAGS)
 
 # Obj rules
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	$(CPP) -c -o $@ $< $(CPP_FLAGS)
+	$(CPP) -c -o $@ $< $(CXXFLAGS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-	$(C) -c -o $@ $< $(C_FLAGS)
+	$(C) -c -o $@ $< $(CFLAGS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.asm
 	$(C) -c -o $@ $< $(ASM_FLAGS)
