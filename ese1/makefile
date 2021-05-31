@@ -74,6 +74,8 @@ main2_plot: $(OBJS) $(OBJ_DIR)/main2_plot.o
 	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 main6_smallvariations: $(OBJS) $(OBJ_DIR)/main6_smallvariations.o
 	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main7_lcontrib: $(OBJS) $(OBJ_DIR)/main7_lcontrib.o
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 # Mains rules
 $(OBJ_DIR)/%.o: %.cpp

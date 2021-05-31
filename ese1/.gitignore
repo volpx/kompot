@@ -9,6 +9,7 @@ main1_plot
 main2_findenergy_3d_precise
 main2_plot
 main6_smallvariations
+main7_lcontrib
 
 # Ignore output data but not cherry picked ones
 !data/
