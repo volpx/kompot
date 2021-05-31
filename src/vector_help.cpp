@@ -33,6 +33,8 @@ uint64_t ind_min(const std::vector<double> &vec,
 {
 
 	uint64_t ind{start};
+	if (stop>static_cast<uint64_t>(vec.size()))
+		stop = static_cast<uint64_t>(vec.size());
 	double val{map ? map(vec[0]) : vec[0]};
 
 	if (map != nullptr)
