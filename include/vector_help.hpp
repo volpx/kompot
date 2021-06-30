@@ -8,6 +8,7 @@
 
 // vector manipulation
 void map(std::vector<double> &vec, std::function<double(uint64_t)> f);
+void map(std::vector<double> &y, const std::vector<double> &x, const std::function<double(double)> f);
 void arange(std::vector<double> &vec, const double start, const double step);
 void linspace(std::vector<double> &vec, const double xmin, const double xmax);
 void fill(std::vector<double> &vec, double val);

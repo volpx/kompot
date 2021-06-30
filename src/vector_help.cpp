@@ -8,6 +8,14 @@ void map(std::vector<double> &vec, const std::function<double(uint64_t)> f)
 		vec[i] = f(i);
 	}
 }
+void map(std::vector<double> &y, const std::vector<double> &x, const std::function<double(double)> f)
+{
+	const uint64_t M{static_cast<uint64_t>(y.size())};
+	for (uint64_t i{0}; i < M; ++i)
+	{
+		y[i] = f(x[i]);
+	}
+}
 void arange(std::vector<double> &vec, const double start, const double step)
 {
 	std::function<double(uint64_t)> f{

@@ -1,18 +1,20 @@
 #include <MF.hpp>
 
-double MF_Eexpected(const int Z,const gsl_matrix *P, const double a[], const uint32_t Norbitals,
+double MF_Eexpected(const uint8_t filled, const gsl_matrix *P, 
+					const double a[], const uint32_t Norbitals,
 					const gsl_matrix *Hcore,
 					const std::vector<double> V2)
 {
 	uint32_t Nbase = P->size1;
 	double Etot = 0;
+	double coeff=0;
 
 	for (uint32_t p = 0; p < Nbase; p++)
 	{
 		for (uint32_t q = 0; q < Nbase; q++)
 		{
 			// One body part
-			Etot += 2 * gsl_matrix_get(P, p, q) * gsl_matrix_get(Hcore,p, q);
+			Etot += (2) * gsl_matrix_get(P, p, q) * gsl_matrix_get(Hcore, p, q);
 
 			// Two body part
 			double tmp = 0;
