@@ -51,6 +51,10 @@ double numerov_integrate_yxmax(
 				y_ii * (1. + 1. / 12 * h2 * k_ii2)) /
 			   (1. + h2 / 12.0 * k2);
 
+		if (std::abs(y)>1e100){
+			return y;
+		}
+
 		k_ii2 = k_i2;
 		k_i2 = k2;
 		y_ii=y_i;
@@ -66,11 +70,11 @@ double numerov_find_energy(
 	const uint64_t N, std::function<double(double)> V,
 	const double Ea, const double Eb, const double Eh)
 {
-	double E_after_secants=0;
+	double E_after_secants=NAN;
+	double y_xmax_ii=numerov_integrate_yxmax(y_ii,y_i,a,h,N,V,Ea);
 	double y_xmax_i=0;
-	double y_xmax_ii=0;
 
-	double E=Ea;
+	double E=Ea+Eh;
 	while(E<Eb)
 	{
 		y_xmax_i=numerov_integrate_yxmax(y_ii,y_i,a,h,N,V,E);
@@ -81,7 +85,7 @@ double numerov_find_energy(
 			// Get a better value by secants method
 			double E_after_secants=findzero_secants_xeps(
 				[y_ii,y_i,a,h,N,V](double E)->double{return numerov_integrate_yxmax(y_ii,y_i,a,h,N,V,E);},
-				E-Eh,E,1e-7,E-Eh,E);
+				E,E-Eh,1e-7,E-Eh,E);
 			return E_after_secants;
 		}
 
