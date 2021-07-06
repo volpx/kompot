@@ -56,6 +56,8 @@ endif
 # Rules
 main1: $(OBJS) $(OBJ_DIR)/main1.o
 	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main2: $(OBJS) $(OBJ_DIR)/main2.o
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 # Mains rules
 $(OBJ_DIR)/%.o: %.cpp

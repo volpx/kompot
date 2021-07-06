@@ -37,7 +37,7 @@ double Coulomb_pq(const double a_p, const double a_q)
 // <pq|1/(r12)|rs>
 double Coulomb_pqrs(const double a_p, const double a_q,const double a_r,const double a_s)
 {
-	return Coulomb_pq(a_p, a_r) * Coulomb_pq(a_q, a_s);
+	return 2 * std::pow(M_PI, 5.0 / 2) / ((a_p + a_r) * (a_q + a_s) * std::sqrt(a_p + a_q + a_r + a_s));
 }
 // <pq|0|rs>
 double Zero_pqrs(const double, const double,const double,const double)
