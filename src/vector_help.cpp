@@ -70,3 +70,18 @@ uint64_t ind_min(const std::vector<double> &vec,
 
 	return ind;
 }
+
+double min(
+	const double vec[],
+	const uint64_t N)
+{
+	double min = vec[0];
+	for (uint64_t i = 0; i < N; i++)
+	{
+		if (min > vec[i])
+		{
+			min = vec[i];
+		}
+	}
+	return min;
+}

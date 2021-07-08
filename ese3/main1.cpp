@@ -81,16 +81,22 @@ int main()
 	constexpr double r_s_Na = 3.93;
 	constexpr double r_s_K = 4.86;
 	constexpr double rs = r_s_K;
-	constexpr uint32_t N = 40;
-	constexpr int Nlevels = 6;
+	constexpr uint32_t N = 8;
+	constexpr int Nlevels = 2; // N = 8
+	// constexpr int Nlevels = 4; // N = 20
+	// constexpr int Nlevels = 6; // N = 40
 
 	// Angular momentum
-	constexpr int lmax = 3;
+	constexpr int lmax = 1;
 	// Occupation order
-	constexpr int is[Nlevels] = {0, 3, 1, 5, 2, 4};
-	constexpr int ls[Nlevels] = {0, 1, 2, 0, 3, 1};
+	constexpr int is[Nlevels] = {0, 1}; // N = 8 lmax=1
+	// constexpr int is[Nlevels] = {0, 3, 1, 2}; // N = 20 lmax=2
+	// constexpr int is[Nlevels] = {0, 3, 1, 5, 2, 4}; // N = 40 lmax=3
+	constexpr int ls[10] = {0, 1, 2, 0, 3, 1};
 	// Number of energies for each l
-	constexpr int Enums[lmax + 1] = {2, 2, 1, 1};
+	constexpr int Enums[lmax + 1] = {1, 1}; // N = 8
+	// constexpr int Enums[lmax + 1] = {2, 1, 1}; // N = 20
+	// constexpr int Enums[lmax + 1] = {2, 2, 1, 1}; // N = 40
 
 	// Background properties
 	constexpr double rhoB = 1 / (4. / 3 * M_PI * rs * rs * rs);
@@ -160,10 +166,10 @@ int main()
 			E=Es[i] = numerov_find_energy(y0, y1, h, M, V, E+1e-10, Eb, Eh);
 			std::cout << l << " " << Es[i] << std::endl;
 
-			for (uint64_t m = 0; m < ME; m++)
-			{
-				ymax[m] = numerov_integrate_yxmax(y0, y1, h, M, V, Ea + m * Eh);
-			}
+			// for (uint64_t m = 0; m < ME; m++)
+			// {
+			// 	ymax[m] = numerov_integrate_yxmax(y0, y1, h, M, V, Ea + m * Eh);
+			// }
 
 			// Compute the WF
 			(Y + i * M)[0] = y0;

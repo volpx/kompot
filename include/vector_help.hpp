@@ -1,5 +1,4 @@
-#ifndef __VECTOR_HELP_HPP__
-#define __VECTOR_HELP_HPP__
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -18,4 +17,7 @@ uint64_t ind_min(const std::vector<double> &vec,
 				 const uint64_t start=0,
 				 uint64_t stop=1);
 
-#endif // __VECTOR_HELP_HPP__
+
+double min(
+	const double vec[],
+	const uint64_t N);
