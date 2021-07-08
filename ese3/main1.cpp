@@ -4,6 +4,8 @@
 #include "MF.hpp"
 #include "gsl_help.hpp"
 #include "numerov.hpp"
+#include "DFT.hpp"
+#include "differentiate.hpp"
 
 #include <cstdint>
 #include <cmath>
@@ -55,7 +57,7 @@ double dE_c(const double rho)
 }
 
 // External potential
-double V_ext( const double rhoB, const double r, const double Rc)
+double V_ext(const double r, const double rhoB, const double Rc)
 {
 	double v_ext = 2 * M_PI * rhoB * 
 	((r > Rc) ? 
@@ -65,15 +67,11 @@ double V_ext( const double rhoB, const double r, const double Rc)
 	return v_ext;
 }
 
-double V_eff(const double rhoB, const double Rc, const double r, const int l)
+double V_eff_0(const double r, const double rhoB, const double Rc, const int l)
 {
-	return V_ext(rhoB, Rc, r) + 0.5 * l * (l + 1) / (r * r);
+	return V_ext(r, rhoB, Rc) + 0.5 * l * (l + 1) / (r * r);
 }
 
-// double V_eff(const double rhoB, const double Rc, const double r, const int l)
-// {
-// 	return 0.5 * r* r + 0.5 * l * (l + 1) / (r * r);
-// }
 
 int main()
 {
@@ -83,116 +81,172 @@ int main()
 	constexpr double r_s_Na = 3.93;
 	constexpr double r_s_K = 4.86;
 	constexpr double rs = r_s_K;
-	constexpr uint32_t Ne = 8;
-	constexpr uint8_t Nlevels = 4;
+	constexpr uint32_t N = 40;
+	constexpr int Nlevels = 6;
 
-	// Initial guess
+	// Angular momentum
+	constexpr int lmax = 3;
+	// Occupation order
+	constexpr int is[Nlevels] = {0, 3, 1, 5, 2, 4};
+	constexpr int ls[Nlevels] = {0, 1, 2, 0, 3, 1};
+	// Number of energies for each l
+	constexpr int Enums[lmax + 1] = {2, 2, 1, 1};
+
+	// Background properties
 	constexpr double rhoB = 1 / (4. / 3 * M_PI * rs * rs * rs);
-	// const uint8_t lmax=2;
-	const double Rc = std::pow(Ne * 3.0 / (rhoB * 4. * M_PI), 1. / 3);
-
-	// Harmonic comparison
-	// constexpr double k = 4 * M_PI * rhoB / 3;
-	// constexpr double ke = smath::sqrt(k);
-	
+	const double Rc = std::pow(N * 3.0 / (rhoB * 4. * M_PI), 1. / 3);
 
 	// Spatial mesh
 	constexpr uint64_t M = 1e4;
 	constexpr double a = 1e-5;
 	constexpr double b = 20;
 	constexpr double h = (b - a) / M;
-	// std::vector<double> r(M);
-	// arange(r, a, h);
 
+	// Potential
+	double V[M];
+
+	// Eigenvectors, eigenvalues and density
 	double Y[M*Nlevels];
+	double Yxx[M*Nlevels];
+	double rho[M];
+	double Es[Nlevels];
 	double y0,y1;
-	double rho[M*Nlevels];
-	std::vector<double> E(Nlevels);
-	constexpr int ls[]={0,1,2,0};
-	// Starting E
-	double Eas[Nlevels]={-1.2,-1.2,-0.8,-0.5};
-	constexpr double Eb=3.5;
-	constexpr double Eh=1e-2;
-	constexpr uint64_t ME=(Eb+1.2)/Eh;
-	std::vector<double> vE(ME);
+	
+	// Energy mesh
+	double Eh,Ea;
+	constexpr double Eb = 0;
+	constexpr uint64_t ME = 1e3;
+
 	std::vector<double> ymax(ME);
-	std::vector<double> y(M);
-	arange(vE,-1.2,Eh);
-	int l;
-	std::function<double(double)> V;
 
 	std::cout << "Problem constants:"
-			  << "\n Ne: " << Ne
+			  << "\nN: " << N
 			  << "\nM: " << M
 			  << "\na: " << a
 			  << "\nb: " << b
 			  << "\nh: " << h
 			  //   << "\nEa: " << Ea
 			  << "\nEb: " << Eb
-			  << "\nEh: " << Eh
+			//   << "\nEh: " << Eh
 			  << "\nME: " << ME
 			  << "\nrs: " << rs
 			  << "\nrhoB: " << rhoB
 			  << "\nRc: " << Rc
-			  << "\nkh: " << 4 * M_PI * rhoB / 3
+			//   << "\nmin(V): " << - 2 * M_PI * rhoB * Rc * Rc
 			  << "\n"
 			  << std::endl;
 
-	for (int i = 0; i < Nlevels; i++)
-	// for (int i = 3; i < Nlevels; i=100)
+	int itot = 0,i;
+	double E;
+	for (int l = 0; l <= lmax; l++)
 	{
-		// Solve the differential eq with numerov for each state
-		l = ls[i];
-		V = [&](double r) -> double {
-			return V_eff(rhoB, Rc, r, l);
-			// return 0;
-		};
-		
-		y0 = 1e-2*std::pow(a, l + 1);
-		y1 = 1e-2*std::pow(a + h, l + 1);
-		E[i] = numerov_find_energy(y0, y1, a, h, M, V, Eas[i], Eb, Eh); 
-		std::cout << E[i] << std::endl;
-		for (uint64_t m = 0; m < ME; m++)
+		// Effective potential
+		for (uint64_t m = 0; m < M; m++)
 		{
-			ymax[m] = numerov_integrate_yxmax(y0, y1, a, h, M, V, vE[m]);
+			V[m] = V_eff_0(a + m * h, rhoB, Rc, l);
 		}
 
-		// Compute the WF
-		(Y + i * M)[0] = y0;
-		(Y + i * M)[1] = y1;
-		numerov_integrate(Y + i * M, a, h, M, V, E[i]);
-		// numerov_integrate(Y + i * M, a, h, M, V, 0.5/100);
+		E=Ea = min(V, M);
+		Eh = (Eb - Ea) / ME;
+		y0 = std::pow(a, l + 1);
+		y1 = std::pow(a + h, l + 1);
+
+		// Solve the differential eq with numerov for each state
+		for (uint8_t g = 0; g < Enums[l]; g++)
+		{
+			// Actual occupation order
+			i=is[itot];
+
+			E=Es[i] = numerov_find_energy(y0, y1, h, M, V, E+1e-10, Eb, Eh);
+			std::cout << l << " " << Es[i] << std::endl;
+
+			for (uint64_t m = 0; m < ME; m++)
+			{
+				ymax[m] = numerov_integrate_yxmax(y0, y1, h, M, V, Ea + m * Eh);
+			}
+
+			// Compute the WF
+			(Y + i * M)[0] = y0;
+			(Y + i * M)[1] = y1;
+			numerov_integrate(Y + i * M, h, M, V, Es[i]);
+			// Normalize
+			double norm=0;
+			for (uint64_t m = 0; m < M; m++)
+			{
+				norm += h * (Y + i * M)[m]*(Y + i * M)[m];
+			}
+			norm=std::sqrt(norm);
+			for (uint64_t m = 0; m < M; m++)
+			{
+				(Y + i * M)[m]/=norm;
+			}
+			// Compute derivative
+			diff_2_5points_allmesh((Y + i * M), M, (Yxx + i * M), h);
+
+			itot++;
+		}
 	}
 
-	// {
-	// std::ofstream file{"data/numerov.dat"};
-	// file << "r phi rho \n";
-	// for (uint64_t m = 0; m < M; m++)
-	// {
-	// 	file << a + m * h;
-	// 	for (int i = 0; i <= 3; i++)
-	// 	{
-	// 		rho[i*M+m] = (i==0?0:rho[(i-1)*M+m])+ Y[i*M+m]*Y[i*M+m];
-	// 		file << ' ' << Y[i*M+m] << ' '<< rho[i*M+m]; // degeneracy
-	// 	}
-	// 	file << '\n';
-	// }
-	// file.close();
-	// }
+	// Compute rho
+	for (uint64_t m = 0; m < M; m++)
+	{
+		// Construct rho
+		double tmp = 0;
+		itot=0;
+		for (int l = 0; l <= lmax; l++)
+		{
+			for (int g = 0; g < Enums[l]; g++)
+			{
+				i=is[itot];
+				tmp += 2 * (2 * l + 1) * Y[i * M + m] * Y[i * M + m];
+				itot++;
+			}
+		}
+		rho[m] = tmp;
+	}
 	
+	// Compute the two differents values of energy to check the convergence
+	double Eeigen = DFT_Eeigen(
+		rho, M, a, h, Nlevels, ls, Es,
+		[](double) { return 0; }, [](double) { return 0; }, [](double) { return 0; }, [](double) { return 0; }, [](double, double, uint64_t, const double *) { return 0; });
+
+
+	double EMF = DFT_EMF(
+		rho, Y, Yxx, M, a, h, Nlevels, ls, rhoB, Rc,
+		[](double) { return 0; }, [](double) { return 0; }, [](double, double, uint64_t, const double *) { return 0; }, V_ext);
+
+	std::cout << Eeigen << " " << EMF << std::endl;
+
 	{
-	std::ofstream file{"data/y_max.dat"};
-	file << "E y_max \n";
-	for (uint64_t m = 0; m < ME; m++)
+	std::ofstream file{"data/numerov.dat"};
+	file << "r phi rho \n";
+	for (uint64_t m = 0; m < M; m++)
 	{
-		file << vE[m] << ' ' << ymax[m] << '\n';
+		file << a + m * h;
+		// for (int i = 0; i <= 3; i++)
+		// {
+		// 	rho[i*M+m] = (i==0?0:rho[(i-1)*M+m])+ Y[i*M+m]*Y[i*M+m];
+		// 	file << ' ' << Y[i*M+m] << ' '<< rho[i*M+m]; // degeneracy
+		// }
+		file<<' '<<rho[m];
+		file << '\n';
 	}
 	file.close();
 	}
 
+	// {
+	// std::ofstream file{"data/y_max.dat"};
+	// file << "E y_max \n";
+	// for (uint64_t m = 0; m < ME; m++)
+	// {
+	// 	file << vE[m] << ' ' << ymax[m] << '\n';
+	// }
+	// file.close();
+	// }
+
 		
 	
-	// Compute the two differents values of energy to check the convergence 
+	
 	return 0;
 	
 }
