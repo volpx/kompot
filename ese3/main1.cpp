@@ -217,7 +217,7 @@ int main()
 		[](double) { return 0; }, [](double) { return 0; }, [](double) { return 0; }, [](double) { return 0; }, [](double, double, uint64_t, const double *) { return 0; });
 
 
-	double EMF = DFT_EMF(
+	double EMF = DFT_Efunc(
 		rho, Y, Yxx, M, a, h, Nlevels, ls, rhoB, Rc,
 		[](double) { return 0; }, [](double) { return 0; }, [](double, double, uint64_t, const double *) { return 0; }, V_ext);
 

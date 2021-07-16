@@ -16,23 +16,6 @@
 
 #include <static_math/cmath.h>
 
-
-
-// Correlation energy parameters
-constexpr double p = 1.0;
-constexpr double A = 0.031091;
-constexpr double alpha_1 = 0.21370;
-constexpr double beta[4] = {7.5957, 3.5876, 1.6382, 0.49294};
-
-// Correlation energy
-// e_c(rho(r)) (scalar r)
-double e_c(const double rho)
-{
-	const double rs = std::pow(3. / (4 * M_PI * rho), 1. / 3);
-	const double DEN = 2 * A * (beta[0] * std::pow(rs, 0.5) + beta[1] * rs + beta[2] * std::pow(rs, 3.0 / 2) + beta[3] * std::pow(rs, p + 1));
-	return -2 * A * (1 + alpha_1 * rs) * std::log(1 + 1.0 / DEN);
-}
-
 // Exchange energy
 // e_x(rho(r)) (scalar r)
 double e_x(const double rho)
@@ -46,29 +29,85 @@ double de_x(const double rho)
 	return -1. / 4 * std::pow(3. / M_PI, 1. / 3) * std::pow(rho, -2. / 3);
 }
 
+// Exchange potential 
+double V_e_x(const double rho, std::function<double(double)> e_x){
+	return 4. / 3 * e_x(rho);
+}
+
+// Correlation energy
+// e_c(rho(r)) (scalar r)
+double e_c(const double rho)
+{
+	// Correlation energy parameters
+	constexpr double A = 0.031091;
+	constexpr double alpha_1 = 0.21370;
+	constexpr double beta[4] = {7.5957, 3.5876, 1.6382, 0.49294};
+
+	const double rs = std::pow(3. / (4 * M_PI * rho), 1. / 3);
+	const double DEN = 2 * A * (beta[0] * std::pow(rs, 0.5) + beta[1] * rs + beta[2] * std::pow(rs, 3.0 / 2) + beta[3] * rs * rs);
+	return -2 * A * (1 + alpha_1 * rs) * std::log(1 + 1.0 / DEN);
+}
+
 // de_c/drho Derivative of correlation
+// double de_c(const double rho)
+// {
+
+// 	// Correlation energy parameters
+// 	constexpr double p = 1.0;
+// 	constexpr double A = 0.031091;
+// 	constexpr double alpha_1 = 0.21370;
+// 	constexpr double beta[4] = {7.5957, 3.5876, 1.6382, 0.49294};
+
+// 	const double rs = std::pow(3. / (4 * M_PI * rho), 1. / 3);
+// 	const double dr_s = (-1. / 3) * rs / rho;
+// 	const double arg1 = 2 * A * (beta[0] * std::sqrt(rs) + beta[1] * rs + beta[2] * std::pow(rs, 3. / 2) + beta[3] * std::pow(rs, p + 1));
+// 	const double arg2 = 1 + 1. / arg1;
+
+// 	return dr_s * (
+// 		-2 * A * alpha_1 * std::log(arg2)
+// 		-2 * A * (1 + alpha_1 * rs) * 1. / (arg2) * (-(2 * A *
+// 			(beta[0] * 0.5 / std::sqrt(rs) + beta[1] + beta[2] * 3. / 2 * std::sqrt(rs)
+// 			+beta[3] * (p + 1) * std::pow(rs , p))) / (arg1 * arg1))
+// 			);
+// }
+
 double de_c(const double rho)
 {
-	const double rs = std::pow(3. / (4 * M_PI * rho), 1. / 3);
-	const double dr_s = -1. / 3 * std::pow(3. / (4 * M_PI), 1. / 3) * std::pow(rho, -4. / 3);
-	const double arg1 = 2 * A * (beta[0] * std::pow(rs, 0.5) + beta[1] * rs + beta[2] * std::pow(rs, 3. / 2) + beta[3] * std::pow(rs, p + 1));
-	const double arg2 = 1 + 1. / arg1;
 
-	return dr_s * (
-		-2 * A * alpha_1 * rs * std::log(arg2)
-		-2 * A * (1 + alpha_1 * rs) * 1. / (arg2) * (-(2 * A *
-			(beta[0] * 0.5 / std::sqrt(rs) + beta[1] + beta[2] * 3. / 2 * std::sqrt(rs)
-			+beta[3] * (p + 1) * std::pow(rs,p))) / (arg1 * arg1))
+	// Correlation energy parameters
+	constexpr double A = 0.031091;
+	constexpr double alpha_1 = 0.21370;
+	constexpr double beta[4] = {7.5957, 3.5876, 1.6382, 0.49294};
+
+	// 
+	const double c1 = std::pow(3. / (4 * M_PI), 1. / 3);
+	const double rs = c1 * std::pow(rho,-1./3);
+	const double c2 = 2 * A * alpha_1 * c1;
+	const double den = 2 * A * (beta[0] * std::sqrt(rs) + beta[1] * rs + beta[2] * std::pow(rs, 3. / 2) + beta[3] * rs * rs);
+	const double c3 = 1 + 1./den;
+
+	return + c2 / (3 * std::pow(rho, 4./3)) * std::log(c3)
+		   - (2 * A + c2 / std::pow(rho, 1./3)) / (den * den * c3) * 2 * A
+		   * (+ beta[0] * std::sqrt(c1) / (6 * std::pow(rho, 7./6))
+			  + beta[1] * c1 / (3 * std::pow(rho, 4./3))
+			  + 0.5 * beta[2] * std::pow(c1 / rho,3./2)		
+			  + 2. / 3 * beta[3] * c1 * c1 / std::pow(rho,5./3)
 			);
+}
+
+// Correlation potential
+double V_e_c(const double rho, std::function<double(double)> e_c, std::function<double(double)> de_c)
+{
+	return e_c(rho) + de_c(rho) * rho;
 }
 
 // External potential
 double V_ext(const double r, const double rhoB, const double Rc)
 {
 	double v_ext = 2 * M_PI * rhoB * 
-	((r > Rc) ? 
-		(-2. / 3 * std::pow(Rc, 3.0) / r): 
-		1. / 3 * r * r - Rc * Rc);
+	((r < Rc) ? 
+		1. / 3 * r * r - Rc * Rc:
+		(-2. / 3 * std::pow(Rc, 3.0) / r));
 	
 	return v_ext;
 }
@@ -77,7 +116,7 @@ double V_ext(const double r, const double rhoB, const double Rc)
 double U_r(const double r, const double a, const double h,const uint64_t M, const double rho[])
 {
 	double u = 0;
-	double rp=0;
+	double rp = 0;
 
 	// Direct term integral
 	uint64_t m=0;
@@ -97,27 +136,23 @@ double U_r(const double r, const double a, const double h,const uint64_t M, cons
 	return 4 * M_PI * u;
 }
 
+double V_rot(
+	const double r, const int l)
+{
+	return 0.5 * l * (l + 1) / (r * r);
+}
+
 // V_eff(r) compute V_eff at distance r (with index i)
 double V_eff(
 	const double r, const uint64_t i,
 	const double rho[], const uint64_t M, 
 	const double h, const double a,
-	const double Rc,const double rhoB,
-	const int l)
+	const double Rc,const double rhoB)
 {
 	// Vext + Vrot + Vdirect + Exc + dExc/drho * rho
-	return V_ext(r ,rhoB, Rc) + 0.5 * l * (l + 1) / (r * r) 
-		+ U_r(r,a,h,M,rho) 
-		+ e_c(rho[i]) + e_x(rho[i]) + (de_c(rho[i]) + de_x(rho[i]))*rho[i];
-}
-
-double V_eff_0(
-	const double r, const uint64_t,
-	const double*, const uint64_t, 
-	const double, const double Rc, 
-	const double rhoB,const int l)
-{
-	return V_ext(r, rhoB, Rc) + 0.5 * l * (l + 1) / (r * r);
+	return V_ext(r ,rhoB, Rc)
+		// + U_r(r, a, h, M, rho) 
+		+ 4. / 3 * e_x(rho[i]) + (e_c(rho[i]) + de_c(rho[i]) * rho[i]);
 }
 
 int main()
@@ -147,20 +182,24 @@ int main()
 
 	// Background properties
 	constexpr double rhoB = 1. / (4. / 3 * M_PI * rs * rs * rs);
-	const double Rc = std::pow(N * 3.0 / (rhoB * 4. * M_PI), 1. / 3);
+	const double Rc = std::pow(N, 1. / 3) * rs;
 
 	// Spatial mesh
 	constexpr uint64_t M = 3e4;
 	constexpr double a = 1e-4;
-	constexpr double b = 30;
+	constexpr double b = 20;
 	constexpr double h = (b - a) / M;
 	uint64_t m_explode=M;
-	uint64_t m_explode_min=m_explode;
-	uint64_t m_explode_min_before=m_explode_min; 
+	uint64_t m_explode_min=M;
+	uint64_t m_explode_min_before=M; 
 
 	// Potential
 	double V[M];
-	double V_l[M];
+	double V_0[M];
+	double V_c[M];
+	double V_x[M];
+	double U_R[M];
+	double V_Ext[M];
 
 	// Eigenvectors, eigenvalues and density
 	double Y[M*Nlevels];
@@ -177,11 +216,10 @@ int main()
 
 	// Mixing parameter
 	constexpr double alpha = 1e-2;
-
 	// Accuracy
 	constexpr double epsilon = 1e-6;
 
-	// std::vector<double> ymax(ME);
+	std::vector<double> ymax(ME);
 
 	std::cout << "Problem constants:"
 			  << "\nN: " << N
@@ -196,20 +234,25 @@ int main()
 			  << "\nrs: " << rs
 			  << "\nrhoB: " << rhoB
 			  << "\nRc: " << Rc
-			//   << "\nmin(V): " << - 2 * M_PI * rhoB * Rc * Rc
 			  << "\n"
 			  << std::endl;
 
 
+	int itot = 0;
+	int i;
+	double E;
 	double Eeigen = 1.0;
 	double Efunc = 0;
-	uint64_t step=0;
-	while(std::abs(Eeigen - Efunc)>epsilon && step <=10)
+	for (uint64_t m = 0; m < M; m++)
+	{
+		rho[m]=0;
+	}
+	uint64_t step = 0;
+	while(std::abs(Eeigen - Efunc) > epsilon && step <=50)
 	{
 		std::cout<<"Step: "<<step<<std::endl;
-		
-		int itot = 0,i;
-		double E;
+		std::cout<<"m_explode_min_before: "<<m_explode_min_before<<std::endl;
+		itot=0;
 
 		for (uint64_t m = 0; m < M; m++)
 		{
@@ -217,23 +260,35 @@ int main()
 		}
 		m_explode_min=M;
 
-		for (int l = 0; l <= lmax; l++)
+		// Compute potential without the l dependancy
+		for (uint64_t m = 0; m < M; m++)
 		{
-			// Effective potential
-			for (uint64_t m = 0; m < M; m++)
+			if(step == 0)
+				V_0[m] = V_ext(a + m * h, rhoB, Rc);
+			else
 			{
-				if(step == 0)
-					V[m] = V_eff_0(a + m * h, m, rho, m_explode_min_before, h, Rc, rhoB, l);
+				V_c[m] = V_e_c(rho[m], e_c, de_c);
+				V_x[m] = V_e_x(rho[m], e_x);
+				U_R[m] = U_r(a + h * m, a, h, M, rho);
+				V_Ext[m] = V_ext(a + m * h, rhoB, Rc);
+				if (m < m_explode_min_before)
+				{
+					V_0[m] = V_eff(a + m * h, m, rho, m_explode_min_before, h, a, Rc, rhoB);
+				}
 				else
 				{
-					if (m<m_explode_min_before)
-						V[m] = V_eff(a + m * h, m, rho, m_explode_min_before, h, a, Rc, rhoB, l);
-					else
-						V[m] = 0; //V_eff_0(a + m * h, m, rho, m_explode_min_before, h, Rc, rhoB, l);
+					V_0[m] = V_0[m_explode_min_before - 1] * std::exp(h * (1.0 * m_explode_min_before - m - 1) / 5);
+					// V_l[m] = 0; //V_eff_0(a + m * h, m, rho, m_explode_min_before, h, Rc, rhoB, l);
 				}
-
-				if(l==0)
-					V_l[m] = V[m];
+			}
+		}
+		
+		for (int l = 0; l <= lmax; l++)
+		{
+			// Solve for value l
+			for (uint64_t m = 0; m < M; m++)
+			{
+				V[m] = V_0[m] + V_rot(a + m * h, l);
 			}
 
 			E=Ea = min(V, m_explode_min_before);
@@ -248,13 +303,47 @@ int main()
 				i=is[itot];
 
 				Ea=E+1e-10;
-				E=Es[i] = numerov_find_energy(y0, y1, h, M, V, Ea, Eb, Eh);
-				std::cout << l << g << " Ea: "<<Ea<< " E: " << Es[i] << std::endl;
+				E = Es[i] = numerov_find_energy(y0, y1, h, M, V, Ea, Eb, Eh);
+				std::cout << '\t' << l << g << " Ea: "<<Ea<< " E: " << Es[i] << std::endl;
+				if(std::isnan(E))
+				{
+					std::cout<<"is nan"<<'\n';
+					for (uint64_t m = 0; m < ME; m++)
+					{
+						ymax[m] = numerov_integrate_yxmax(y0, y1, h, M, V, Ea + m * Eh);
+					}
 
-				// for (uint64_t m = 0; m < ME; m++)
-				// {
-				// 	ymax[m] = numerov_integrate_yxmax(y0, y1, h, M, V, Ea + m * Eh);
-				// }
+					{
+						std::ofstream file{"data/y_max.dat"};
+						file << "E y_max \n";
+						for (uint64_t m = 0; m < ME; m++)
+						{
+							file << Ea+m*Eh << ' ' << ymax[m] << '\n';
+						}
+						file.close();
+					}
+
+					numerov_integrate(Y + i * M, h, M, V, Ea);
+
+					{
+						std::ofstream file{"data/numerov_sc_y.dat"};
+						file << "r phi rho V_l\n";
+						for (uint64_t m = 0; m < M; m++)
+						{
+							file << a + m * h;
+							// for (int i = 0; i <= 3; i++)
+							// {
+							// 	rho[i*M+m] = (i==0?0:rho[(i-1)*M+m])+ Y[i*M+m]*Y[i*M+m];
+							// 	file << ' ' << Y[i*M+m] << ' '<< rho[i*M+m]; // degeneracy
+							// }
+							file<<' '<<(Y + i * M)[m]<<' '<<V_0[m];
+							file << '\n';
+						}
+						file.close();
+					}
+
+					return 0;
+				}
 
 				// Compute the WF
 				(Y + i * M)[0] = y0;
@@ -270,7 +359,7 @@ int main()
 					}
 					else
 					{
-						m_explode=M-m;
+						m_explode=M-m+1;
 						break;
 					}
 				}
@@ -318,7 +407,7 @@ int main()
 		Efunc = DFT_Efunc(rho, Y, Yxx, m_explode_min, a, h, Nlevels, ls, rhoB, Rc, 
 			e_c, e_x, U_r, V_ext);
 		
-		std::cout <<"E_eigen: "<< Eeigen << " " <<"E_func: "<< Efunc << std::endl;
+		std::cout << "\tE_eigen: "<< Eeigen << " " <<"E_func: "<< Efunc << std::endl;
 		
 		m_explode_min_before=m_explode_min;
 		
@@ -327,7 +416,7 @@ int main()
 
 	{
 	std::ofstream file{"data/numerov_sc.dat"};
-	file << "r phi rho V_l\n";
+	file << "r rho V_l V_c V_x U_R V_Ext\n";
 	for (uint64_t m = 0; m < M; m++)
 	{
 		file << a + m * h;
@@ -336,7 +425,7 @@ int main()
 		// 	rho[i*M+m] = (i==0?0:rho[(i-1)*M+m])+ Y[i*M+m]*Y[i*M+m];
 		// 	file << ' ' << Y[i*M+m] << ' '<< rho[i*M+m]; // degeneracy
 		// }
-		file<<' '<<rho[m]<<' '<<V_l[m];
+		file<<' '<<rho[m]<<' '<<V_0[m] << ' '<< V_c[m] << ' ' << V_x[m] << ' ' << U_R[m] << ' ' << V_Ext[m];
 		file << '\n';
 	}
 	file.close();

@@ -183,7 +183,8 @@ double numerov_find_energy(
 		{
 			// Get a better value by secants method
 			double E_after_secants = findzero_secants_xeps(
-				[y_ii, y_i, h, N, V](double E) -> double { return numerov_integrate_yxmax(y_ii, y_i, h, N, V, E); },
+				[y_ii, y_i, h, N, V](double E) -> double 
+				{ return numerov_integrate_yxmax(y_ii, y_i, h, N, V, E); },
 				E, E - Eh, 1e-7, E - Eh, E);
 			return E_after_secants;
 		}
