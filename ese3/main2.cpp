@@ -49,28 +49,6 @@ double e_c(const double rho)
 }
 
 // de_c/drho Derivative of correlation
-// double de_c(const double rho)
-// {
-
-// 	// Correlation energy parameters
-// 	constexpr double p = 1.0;
-// 	constexpr double A = 0.031091;
-// 	constexpr double alpha_1 = 0.21370;
-// 	constexpr double beta[4] = {7.5957, 3.5876, 1.6382, 0.49294};
-
-// 	const double rs = std::pow(3. / (4 * M_PI * rho), 1. / 3);
-// 	const double dr_s = (-1. / 3) * rs / rho;
-// 	const double arg1 = 2 * A * (beta[0] * std::sqrt(rs) + beta[1] * rs + beta[2] * std::pow(rs, 3. / 2) + beta[3] * std::pow(rs, p + 1));
-// 	const double arg2 = 1 + 1. / arg1;
-
-// 	return dr_s * (
-// 		-2 * A * alpha_1 * std::log(arg2)
-// 		-2 * A * (1 + alpha_1 * rs) * 1. / (arg2) * (-(2 * A *
-// 			(beta[0] * 0.5 / std::sqrt(rs) + beta[1] + beta[2] * 3. / 2 * std::sqrt(rs)
-// 			+beta[3] * (p + 1) * std::pow(rs , p))) / (arg1 * arg1))
-// 			);
-// }
-
 double de_c(const double rho)
 {
 
@@ -154,6 +132,115 @@ double V_eff(
 		// + U_r(r, a, h, M, rho) 
 		+ 4. / 3 * e_x(rho[i]) + (e_c(rho[i]) + de_c(rho[i]) * rho[i]);
 }
+
+
+
+
+
+
+// // Potential definition
+
+// // External potential
+// double V_ext(const double r, const double rhoB, const double Rc)
+// {
+// 	double v_ext = 2 * M_PI * rhoB * 
+// 	((r < Rc) ? 
+// 		(1. / 3 * r * r - Rc * Rc):
+// 		(-2. / 3 * std::pow(Rc, 3.0) / r));
+	
+// 	return v_ext;
+// }
+
+// // Centrifugal potential
+// double V_rot(const double r, const int l)
+// {
+// 	return 0.5 * l * (l + 1) / (r * r);
+// }
+
+// // Direct potential
+// double U_r(const double r, const double a, const double h,const uint64_t M, const double rho[])
+// {
+// 	double u = 0;
+// 	double rp = a;
+
+// 	// Integral's computation
+// 	uint64_t m=0;
+// 	while(m < M && rp<=r)
+// 	{
+// 		rp = a + m * h;
+// 		u += h * (rp * rp * rho[m]);
+// 		m++;
+// 	}
+// 	u=u/r;
+// 	while(m < M)
+// 	{
+// 		rp = a + m * h;
+// 		u += h * rp * rho[m];
+// 		m++;
+// 	}
+// 	return 4 * M_PI * u;
+// }
+
+// // Exchange energy
+// double e_x(const double rho)
+// {
+// 	return -3. / 4 * std::pow(3 * rho / M_PI, 1. / 3);
+// }
+
+// // Correlation energy
+// double e_c(const double rho)
+// {
+// 	// Correlation energy parameters
+// 	constexpr double A = 0.031091;
+// 	constexpr double alpha_1 = 0.21370;
+// 	constexpr double beta[4] = {7.5957, 3.5876, 1.6382, 0.49294};
+
+// 	const double rs = std::pow(3. / (4 * M_PI * rho), 1. / 3);
+// 	const double DEN = 2 * A * (beta[0] * std::pow(rs, 0.5) + beta[1] * rs + beta[2] * std::pow(rs, 3.0 / 2) + beta[3] * rs * rs); // beta_3 r_s^(p+1) but p = 1
+// 	return -2 * A * (1 + alpha_1 * rs) * std::log(1 + 1.0 / DEN);
+// }
+
+// // Derivative of the correlation energy
+// double de_c(const double rho)
+// {
+
+// 	// Correlation energy parameters
+// 	constexpr double A = 0.031091;
+// 	constexpr double alpha_1 = 0.21370;
+// 	constexpr double beta[4] = {7.5957, 3.5876, 1.6382, 0.49294};
+
+// 	// Definition of the correlation energy
+// 	const double c1 = std::pow(3. / (4 * M_PI), 1. / 3);
+// 	const double rs = c1 * std::pow(rho, -1. / 3);
+// 	const double c2 = 2 * A * alpha_1 * c1;
+// 	const double den = 2 * A * (beta[0] * std::sqrt(rs) + beta[1] * rs + beta[2] * std::pow(rs, 3. / 2) + beta[3] * rs * rs); // beta_3 r_s^(p+1) but p = 1
+// 	const double c3 = 1 + 1./den;
+
+// 	return + c2 / (3 * std::pow(rho, 4. / 3)) * std::log(c3)
+// 		   - (2 * A + c2 / std::pow(rho, 1. / 3)) / (den * den * c3) * 2 * A
+// 		   * (+ beta[0] * std::sqrt(c1) / (6 * std::pow(rho, 7. / 6))
+// 			  + beta[1] * c1 / (3 * std::pow(rho, 4. / 3))
+// 			  + 0.5 * beta[2] * std::pow(c1 / rho, 3. / 2)		
+// 			  + 2 * beta[3] * c1 * c1 / (3 * std::pow(rho, 5. / 3))
+// 			);
+// }
+
+// // Exchange correlation potential
+// double V_xc(const double rho)
+// {
+// 	return e_x(rho) / 0.75 + e_c(rho) + de_c(rho) * rho;
+// }
+
+// // KS potential
+// double V_KS(const double r, const uint64_t i,
+// 	const double rho[], const uint64_t M, 
+// 	const double h, const double a,
+// 	const double Rc,const double rhoB)
+// {
+// 	return V_xc(rho[i]) + V_ext(r, rhoB, Rc) + U_r(r, a, h, M, rho) ;
+// }
+
+
 
 int main()
 {
@@ -248,7 +335,7 @@ int main()
 		rho[m]=0;
 	}
 	uint64_t step = 0;
-	while(std::abs(Eeigen - Efunc) > epsilon && step <=50)
+	while(std::abs(Eeigen - Efunc) > epsilon && step <=30)
 	{
 		std::cout<<"Step: "<<step<<std::endl;
 		std::cout<<"m_explode_min_before: "<<m_explode_min_before<<std::endl;
@@ -267,13 +354,14 @@ int main()
 				V_0[m] = V_ext(a + m * h, rhoB, Rc);
 			else
 			{
-				V_c[m] = V_e_c(rho[m], e_c, de_c);
-				V_x[m] = V_e_x(rho[m], e_x);
-				U_R[m] = U_r(a + h * m, a, h, M, rho);
-				V_Ext[m] = V_ext(a + m * h, rhoB, Rc);
+				// V_c[m] = V_e_c(rho[m], e_c, de_c);
+				// V_x[m] = V_e_x(rho[m], e_x);
+				// U_R[m] = U_r(a + h * m, a, h, M, rho);
+				// V_Ext[m] = V_ext(a + m * h, rhoB, Rc);
 				if (m < m_explode_min_before)
 				{
 					V_0[m] = V_eff(a + m * h, m, rho, m_explode_min_before, h, a, Rc, rhoB);
+					// V_0[m] = V_KS(a + m * h, m, rho, m_explode_min_before, h, a, Rc, rhoB);
 				}
 				else
 				{

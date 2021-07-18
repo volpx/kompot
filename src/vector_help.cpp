@@ -1,75 +1,5 @@
 #include "vector_help.hpp"
 
-void map(std::vector<double> &vec, const std::function<double(uint64_t)> f)
-{
-	const uint64_t M{static_cast<uint64_t>(vec.size())};
-	for (uint64_t i{0}; i < M; ++i)
-	{
-		vec[i] = f(i);
-	}
-}
-void map(std::vector<double> &y, const std::vector<double> &x, const std::function<double(double)> f)
-{
-	const uint64_t M{static_cast<uint64_t>(y.size())};
-	for (uint64_t i{0}; i < M; ++i)
-	{
-		y[i] = f(x[i]);
-	}
-}
-void arange(std::vector<double> &vec, const double start, const double step)
-{
-	std::function<double(uint64_t)> f{
-		[&](uint64_t i) -> double { return start + i * step; }};
-	map(vec, f);
-}
-void linspace(std::vector<double> &vec, const double xmin, const double xmax)
-{
-	const double h{(xmax - xmin) / (vec.size() - 1)};
-	arange(vec, xmin, h);
-}
-void fill(std::vector<double> &vec, const double val)
-{
-	std::function<double(uint64_t)> f{
-		[&](uint64_t) -> double { return val; }};
-	map(vec, f);
-}
-
-uint64_t ind_min(const std::vector<double> &vec,
-				 std::function<double(double)> map,
-				 const uint64_t start,
-				 uint64_t stop)
-{
-
-	uint64_t ind{start};
-	if (stop>static_cast<uint64_t>(vec.size()))
-		stop = static_cast<uint64_t>(vec.size());
-	double val{map ? map(vec[0]) : vec[0]};
-
-	if (map != nullptr)
-	{
-		for (uint64_t i{0}; i < static_cast<uint64_t>(vec.size()); ++i)
-		{
-			if (map(vec[i]) < val)
-			{
-				val = map(vec[i]);
-				ind = i;
-			}
-		}
-	}
-	else
-	{
-		for (uint64_t i{0}; i < static_cast<uint64_t>(vec.size()); ++i)
-		{
-			if (vec[i] < val)
-			{
-				val = vec[i];
-				ind = i;
-			}
-		}
-	}
-
-	return ind;
-}
 
 double min(
 	const double vec[],
@@ -84,4 +14,143 @@ double min(
 		}
 	}
 	return min;
+}
+
+double average(
+	const double vec[],
+	const uint64_t N)
+{
+	double mean = 0;
+	for (uint64_t i = 0; i < N; i++)
+	{
+		mean += vec[i];
+	}
+	return mean / N;
+}
+
+// Windowed array
+WArray::WArray(const size_t N, const size_t a)
+	: owner_of_ptr{true},
+	  data{new double[N]},
+	  N{N},
+	  a{a}
+{
+}
+
+WArray::WArray(double ptr[], const size_t N,const size_t a)
+	: owner_of_ptr{false},
+	  data{ptr},
+	  N{N},
+	  a{a}
+{
+}
+
+// WArray::WArray(const WArray &other)
+// 	: owner_of_ptr{true},
+// 	  data{new double[other.N]},
+// 	  N{other.N},
+// 	  a{other.a}
+// {
+// 	for(size_t i=0; i<N; i++)
+// 	{
+// 		this->data[i]=other.data[i];
+// 	}
+// }
+
+// WArray::WArray(const WArray &other)
+// 	: owner_of_ptr{true},
+// 	  data{new double[other.N]},
+// 	  N{other.N},
+// 	  a{other.a}
+// {
+// 	for(size_t i=0; i<N; i++)
+// 	{
+// 		this->data[i]=other.data[i];
+// 	}
+// }
+
+bool WArray::inWindow(const size_t i)
+{
+	if(i>=this->a && i<(this->a+this->N))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void WArray::set(const size_t i,const double val)
+{
+	if(this->inWindow(i))
+	{
+		this->data[i-a]=val;
+	}
+}
+
+double &WArray::get(const size_t i)
+{
+	return this->data[i-a];
+}
+double& WArray::operator[](const size_t i)
+{
+	return this->get(i);
+}
+
+void WArray::fill(const double val)
+{
+	for (size_t i{0}; i < this -> N; i++)
+		this->data[ i ]=val;
+}
+
+WArray::~WArray()
+{
+	if(this->owner_of_ptr)
+	{
+		delete[] this->data;
+	}
+}
+
+// Circular array 
+CArray::CArray(const size_t N)
+	: owner_of_ptr{true},
+	  data{new double[N]},
+	  N{N}
+{
+}
+
+CArray::CArray(double ptr[], const size_t N)
+	: owner_of_ptr{false},
+	  data{ptr},
+	  N{N}
+{
+}
+
+void CArray::set(const size_t i,const double val)
+{
+	this->data[ i % this->N]=val;
+}
+
+double &CArray::get(const size_t i)
+{
+	return this->data[i % this->N];
+}
+double& CArray::operator[](const size_t i)
+{
+	return this->get(i);
+}
+
+void CArray::fill(const double val)
+{
+	for (size_t i{0}; i < this -> N; i++)
+		this->data[ i ]=val;
+}
+
+CArray::~CArray()
+{
+	if(this -> owner_of_ptr)
+	{
+		delete[] this->data;
+	}
 }
