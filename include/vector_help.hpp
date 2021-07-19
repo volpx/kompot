@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cmath>
 #include <vector>
 #include <functional>
 
@@ -13,18 +14,26 @@ void arange(double vec[],const size_t N, const double start, const double step);
 void linspace(double vec[],const size_t N, const double xmin, const double xmax);
 void fill(double vec[],const size_t N, double val);
 
-uint64_t ind_min(const std::vector<double> &vec,
-				 std::function<double(double)> map = nullptr,
-				 const uint64_t start=0,
-				 uint64_t stop=1);
+size_t ind_min(
+	const double vec[], const size_t N,
+	const size_t start=0, size_t stop=-1,
+	std::function<double(double)> map = [](double x){return x;});
 
 
 double min(
 	const double vec[],
-	const uint64_t N);
+	const size_t N);
 double average(
 	const double vec[],
-	const uint64_t N);
+	const size_t N);
+double variance(
+	const double vec[],
+	const size_t N,
+	const int ddof=0);
+double stddev(
+	const double vec[],
+	const size_t N,
+	const int ddof=0);
 
 // Windowed array
 class WArray{

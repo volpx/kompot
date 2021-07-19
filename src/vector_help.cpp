@@ -1,12 +1,29 @@
 #include "vector_help.hpp"
 
+size_t ind_min(
+	const double vec[], const size_t N,
+	const size_t start, size_t stop,
+	std::function<double(double)> map)
+{
+	size_t idx_min = 0;
+	double val_min=map(vec[idx_min]);
+	stop = std::min(stop,N);
+	for (size_t i = start; i < stop; i++)
+	{
+		if (val_min > map(vec[i]))
+		{
+			idx_min = i;
+		}
+	}
+	return idx_min;
+}
 
 double min(
 	const double vec[],
-	const uint64_t N)
+	const size_t N)
 {
 	double min = vec[0];
-	for (uint64_t i = 0; i < N; i++)
+	for (size_t i = 0; i < N; i++)
 	{
 		if (min > vec[i])
 		{
@@ -18,15 +35,37 @@ double min(
 
 double average(
 	const double vec[],
-	const uint64_t N)
+	const size_t N)
 {
 	double mean = 0;
-	for (uint64_t i = 0; i < N; i++)
+	for (size_t i = 0; i < N; i++)
 	{
 		mean += vec[i];
 	}
 	return mean / N;
 }
+
+double variance(
+	const double vec[],
+	const size_t N,
+	const int ddof)
+{
+	double mean = 0;
+	for (size_t i = 0; i < N; i++)
+	{
+		mean += vec[i]*vec[i];
+	}
+	return mean / (N-ddof);
+}
+
+double stddev(
+	const double vec[],
+	const size_t N,
+	const int ddof)
+{
+	return std::sqrt(variance(vec,N,ddof));
+}
+
 
 // Windowed array
 WArray::WArray(const size_t N, const size_t a)
