@@ -49,15 +49,14 @@ double variance(
 	const size_t N,
 	const int ddof)
 {
-	double mean = 0;
-	double avg2=average(vec,N);
-	avg2=avg2*avg2;
+	double sum = 0,sum2=0;
 
 	for (size_t i = 0; i < N; i++)
 	{
-		mean += vec[i]*vec[i]-avg2;
+		sum  += vec[i];
+		sum2 += vec[i]*vec[i];
 	}
-	return mean / (N-ddof);
+	return (sum2-sum*sum/N) / (N-ddof);
 }
 
 double stddev(

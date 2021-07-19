@@ -158,9 +158,9 @@ int main()
 	constexpr double m = 4.002602 * uni::Da_to_kg; // Kg
 
 	// Number of VMC steps
-	constexpr uint32_t S = 1e7;
+	constexpr uint32_t S = 1e6;
 	// Thermalization steps
-	constexpr uint32_t Sth = S / 100;
+	constexpr uint32_t Sth = S / 10;
 	constexpr uint32_t Sdata = S - Sth;
 	// Number of particles
 	constexpr uint32_t N = 32;
@@ -301,11 +301,13 @@ int main()
 				Vs[s] = V;
 			}
 		}
+
+		// TODO: compute variance knowing that points are not perfectly independent
 		std::cout
 			<< "Delta: " << delta << " Probs:" << average(probs.data,K)
-			<< "\nLocal kinetic energy: " << average(Ts.data, Sdata) << " +/- " << stddev(Ts.data, Sdata)
-			<< "\nJF    kinetic energy: " << average(TJFs.data, Sdata) << " +/- " << stddev(TJFs.data, Sdata)
-			<< "\nPotential     energy: " << average(Vs.data, Sdata) << " +/- " << stddev(Vs.data, Sdata)
+			<< "\nLocal kinetic energy: " << average(Ts.data, Sdata) << " +/- " << stddev(Ts.data, Sdata,1)
+			<< "\nJF    kinetic energy: " << average(TJFs.data, Sdata) << " +/- " << stddev(TJFs.data, Sdata,1)
+			<< "\nPotential     energy: " << average(Vs.data, Sdata) << " +/- " << stddev(Vs.data, Sdata,1)
 			<< "\n"
 			<< std::endl;
 	}
