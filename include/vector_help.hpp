@@ -16,7 +16,7 @@ void fill(double vec[],const size_t N, double val);
 
 size_t ind_min(
 	const double vec[], const size_t N,
-	const size_t start=0, size_t stop=-1,
+	const size_t start=0,
 	std::function<double(double)> map = [](double x){return x;});
 
 

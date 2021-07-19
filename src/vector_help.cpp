@@ -2,13 +2,12 @@
 
 size_t ind_min(
 	const double vec[], const size_t N,
-	const size_t start, size_t stop,
+	const size_t start,
 	std::function<double(double)> map)
 {
 	size_t idx_min = 0;
 	double val_min=map(vec[idx_min]);
-	stop = std::min(stop,N);
-	for (size_t i = start; i < stop; i++)
+	for (size_t i = start; i < N; i++)
 	{
 		if (val_min > map(vec[i]))
 		{
@@ -51,9 +50,12 @@ double variance(
 	const int ddof)
 {
 	double mean = 0;
+	double avg2=average(vec,N);
+	avg2=avg2*avg2;
+
 	for (size_t i = 0; i < N; i++)
 	{
-		mean += vec[i]*vec[i];
+		mean += vec[i]*vec[i]-avg2;
 	}
 	return mean / (N-ddof);
 }
