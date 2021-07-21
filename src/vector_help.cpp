@@ -1,5 +1,13 @@
 #include "vector_help.hpp"
 
+void fill(double vec[],const size_t N, double val)
+{
+	for( size_t i = 0; i < N; i++ )
+	{
+		vec[i]=val;
+	}
+}
+
 size_t ind_min(
 	const double vec[], const size_t N,
 	const size_t start,
@@ -56,7 +64,7 @@ double variance(
 		sum  += vec[i];
 		sum2 += vec[i]*vec[i];
 	}
-	return (sum2-sum*sum/N) / (N-ddof);
+	return (sum2 - sum * sum / N) / (N - ddof);
 }
 
 double stddev(

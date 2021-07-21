@@ -44,3 +44,11 @@ int number_of_significant_digits(double x, double corr)
 {
 	return (int)std::log10(x / corr);
 }
+
+void PressEnterToContinue(){
+	int c;
+	std::cout << "Press ENTER to continue... " << std::endl;
+	do 
+		c = getchar(); 
+	while ((c != '\n') && (c != EOF));
+}

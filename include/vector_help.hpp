@@ -44,10 +44,10 @@ public:
 	// WArray(const WArray &other);
 	// WArray(WArray &&other);
 
-	bool owner_of_ptr=false;
-	double *data=nullptr;
-	size_t N=0;
-	size_t a=0; // Start of window
+	const bool owner_of_ptr=false;
+	double *const data=nullptr;
+	const size_t N=0;
+	const size_t a=0; // Start of window
 
 	bool inWindow(size_t i);
 	void set(const size_t i,const double val=0);
@@ -65,9 +65,9 @@ public:
 	CArray(const size_t N);
 	CArray(double ptr[], const size_t N);
 
-	bool owner_of_ptr=false;
-	double *data=nullptr;
-	size_t N=0;
+	const bool owner_of_ptr=false;
+	double *const data=nullptr;
+	const size_t N=0;
 
 	void set(const size_t i,const double val=0);
 	double& get(const size_t i);
@@ -76,3 +76,39 @@ public:
 
 	~CArray();
 };
+
+/*
+Compute the autocorrelation function
+x: series to compute the autocorrelation of
+corr: resulting autocorrelation function,
+	its length is taken as the correlation length
+*/
+template <typename T>
+void autocorrelation(
+	T corr[], const size_t Ncorr,
+	const T x[], const size_t N)
+{
+	// Mean of x
+	T m{average(x, N)};
+	// deviation from mean, numerator, denominator
+	T xim, n, d;
+
+	for (size_t t = 0; t < Ncorr; t++)
+	{
+		// Autocorrelation at offset t
+
+		n = 0; // Numerator
+		d = 0; // Denominator
+
+		// Sum all the contributions
+		for (size_t i = 0; i < N - t; i++)
+		{
+			xim = x[i] - m;
+			n += xim * (x[i + t] - m);
+			d += xim * xim;
+		}
+
+		// Save
+		corr[t] = n / d;
+	}
+}

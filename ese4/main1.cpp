@@ -1,6 +1,7 @@
 #include "uniconst.hpp"
 #include "vec3d.hpp"
 #include "simulation.hpp"
+#include "optimize.hpp"
 
 #include <cstdint>
 #include <cmath>
@@ -110,6 +111,7 @@ double get_local_TJF(
 				r_li_s = compute_alias(pos[l], other, L);
 				if (r_li_s > 0)
 				{
+					// Laplacian term
 					T += (c + 2 * c1) * std::pow(r_li_s, -7.0);
 				}
 			}
@@ -160,12 +162,14 @@ int main()
 	// Number of VMC steps
 	constexpr uint32_t S = 1e6;
 	// Thermalization steps
-	constexpr uint32_t Sth = S / 10;
+	constexpr uint32_t Sth = 1e5;
 	constexpr uint32_t Sdata = S - Sth;
+	// Correlations steps
+	constexpr size_t Scorr = 1e3;
 	// Number of particles
 	constexpr uint32_t N = 32;
 	// Averaging length
-	constexpr uint32_t K = 1e3;
+	constexpr uint32_t K = 5e3;
 
 	// Derived parameters
 	constexpr double hbar2_2m = uni::hbar_r * uni::hbar_r /
@@ -176,19 +180,14 @@ int main()
 	// Number of variational parameters
 	constexpr uint32_t M = 20;
 	// Parameter mesh
-	const double ba = b0;
-	const double bb = b0*1.1;
+	const double ba = 1.05;
+	const double bb = 1.35;
 	const double bh = (bb-ba)/M;
-	double bs[M];
-	for (uint32_t i = 0; i < M; i++)
-	{
-		bs[i] = ba + i * bh;
-	}
-	
-	const double deltamax=L/2;
-	const double deltamin=1e-4;
-	double delta = 0.4;
-	
+
+	const double deltamax = L / 2;
+	const double deltamin = 1e-4;
+	double delta = 0.324034;
+
 
 	std::cout
 		<< "Problem constants:"
@@ -209,9 +208,8 @@ int main()
 	double T = 0;
 	double TJF = 0;
 	double V = 0;
-	WArray Ts(Sdata, Sth);
-	WArray TJFs(Sdata, Sth);
-	WArray Vs(Sdata, Sth);
+	WArray Es(Sdata, Sth);
+	WArray EJFs(Sdata, Sth);
 
 	// Variables
 	Vec3D *posa = new Vec3D[N];
@@ -221,19 +219,28 @@ int main()
 	Vec3D *tmp = posa;
 	double new_prob, b, P1, P2;
 	CArray probs(K);
+	
+	// Autocorrelation
+	double lambda[3];
+	double *autocorr = new double[Scorr];
+	std::cout<<autocorr<<std::endl;
 
-	for (uint32_t m = 0; m < M; m+=M)
+	// Energy output file
+	std::ofstream file{"data/E.dat"};
+	file << "b E dEavg EJF dEJFavg" << '\n';
+
+	for (uint32_t m = 0; m < M; m++)
 	{
-		b = bs[m];
-		std::cout << "b: " << b << std::endl;
+		b = ba + m * bh;
+		std::cout << "m:" << m << " b: " << b << std::endl;
 		// Particles initialization
 		init_lattice(pos1, N, L, 2, 4);
 		apply_periodic_bounds(pos1, N, L);
 		P1 = Density(pos1, N, b, L);
 
-		Ts.fill(0);
-		TJFs.fill(0);
-		Vs.fill(0);
+		Es.fill(0);
+		EJFs.fill(0);
+		delta = 0.324034;
 
 		// Compute new quantities
 		T = hbar2_2m * get_local_T(pos1, N, b, L);
@@ -270,13 +277,6 @@ int main()
 			P2 = Density(pos2, N, b, L);
 			new_prob = P2 / P1;
 			probs[s] = new_prob;
-			// Touchup the delta
-			if (s < Sth && s % K == 0)
-			{
-				delta *= (1 + 1e-2 * (average(probs.data, K) / 0.5 - 1));
-				delta = (delta>deltamax)? deltamax:(delta<deltamin)?deltamin:delta;
-				// std::cout << s<< ' '<< average(probs.data, K) << ' ' << delta << std::endl;
-			}
 
 			if (randu() < new_prob)
 			{
@@ -294,36 +294,95 @@ int main()
 			}
 
 			// Sample the quantities (after "thermalization")
-			if (Ts.inWindow(s))
+			if (Es.inWindow(s))
 			{
-				Ts[s] = T;
-				TJFs[s] = TJF;
-				Vs[s] = V;
+				Es[s] = T + V;
+				EJFs[s] = TJF + V;
+			}
+			else
+			{
+				// Touchup the delta
+				if (s % K == 0)
+				{
+					delta *= (1 + 1e-2 * (average(probs.data, K) / 0.5 - 1));
+					delta = (delta > deltamax) ? deltamax : (delta < deltamin) ? deltamin: delta;
+					// std::cout << s<< ' '<< average(probs.data, K) << ' ' << delta << std::endl;
+				}
 			}
 		}
 
+		// autocorrelation
+		// E
+		lambda[0]=1;
+		lambda[1]=0.2;
+		lambda[2]=0;
+		autocorrelation(autocorr, Scorr, Es.data, Es.N);
+		fit_to_nexp(lambda, autocorr, Scorr);
+		std::cout << lambda[1] << std::endl;
+		double Escorr = 1. / lambda[1];
+		double Eavg = average(Es.data, Sdata);
+		double DEavg = Escorr / (Es.N) * variance(Es.data, Es.N, 1);
+		// EJF
+		lambda[0]=1;
+		lambda[1]=0.2;
+		lambda[2]=0;
+		autocorrelation(autocorr, Scorr, EJFs.data, EJFs.N);
+		fit_to_nexp(lambda, autocorr, Scorr);
+		double EJFscorr = 1. / lambda[1];
+		double EJFavg = average(EJFs.data, Sdata);
+		double DEJFavg = EJFscorr / (EJFs.N) * variance(EJFs.data, EJFs.N, 1);
+
 		// TODO: compute variance knowing that points are not perfectly independent
 		std::cout
-			<< "Delta: " << delta << " Probs:" << average(probs.data,K)
-			<< "\nLocal kinetic energy: " << average(Ts.data, Sdata) << " +/- " << stddev(Ts.data, Sdata,1)
-			<< "\nJF    kinetic energy: " << average(TJFs.data, Sdata) << " +/- " << stddev(TJFs.data, Sdata,1)
-			<< "\nPotential     energy: " << average(Vs.data, Sdata) << " +/- " << stddev(Vs.data, Sdata,1)
+			<<   "Probs:" << average(probs.data,K) <<' ' << "Delta: " << delta
+			<< "\nLocal energy: " << Eavg << " +/- " << std::sqrt(DEavg) << " ("<<Escorr<<")"
+			<< "\nJF    energy: " << EJFavg << " +/- " << std::sqrt(DEJFavg)<< " ("<<EJFscorr<<")"
 			<< "\n"
 			<< std::endl;
+
+
+		// Save data
+		file 
+			<< b << ' '
+			<< Eavg << ' '
+			<< std::sqrt(DEavg) << ' '
+			<< EJFavg <<' '
+			<< std::sqrt(DEJFavg)
+			<< '\n';
 	}
 
-	{
-		std::ofstream file{"data/T.dat"};
-		file << "step T TJf prob" << '\n';
-		for (uint32_t s = 0; s < S; s++)
-		{
-			file << s << ' ' << Ts[s] << ' ' << TJFs[s] << ' ' << probs.get(s) << '\n';
-		}
-		file.close();
-	}
+	file.close();
 
-	// interaction cutoff
-	// autocorrelation
+	delete[] posa;
+	delete[] posb;
+	delete[] autocorr;
 
 	return 0;
 }
+		#if 0
+		// Save data
+		{
+			std::ofstream file{"data/T.dat"};
+			file << "step T TJf V" << '\n';
+			for (uint32_t s = 0; s < Es.N; s++)
+			{
+				file 
+					<< s << ' '
+					<< Es.data[s] << ' '
+					<< EJFs.data[s] << '\n';
+			}
+			file.close();
+		}
+		#endif
+		#if 0
+		// Save autocorrelation
+		{
+			std::ofstream file{"data/correlation.dat"};
+			file << "step Ecorr "<< '\n';
+			for (uint32_t s = 0; s < Scorr; s++)
+			{
+				file<< s << ' '<< autocorr[s] << '\n';
+			}
+			file.close();
+		}
+		#endif

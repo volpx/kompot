@@ -18,7 +18,7 @@ C           = gcc
 RM          = rm -f
 
 # Flags
-COMMON_FLAGS= -O3 -Wall -Wpedantic -Wextra -mavx2
+COMMON_FLAGS= -O3 -Wall -Wpedantic -Wextra -mavx2 -march=native -ffast-math
 CXXFLAGS   = $(COMMON_FLAGS) -I$(INC_DIR) -std=c++14
 CFLAGS     = $(COMMON_FLAGS) -I$(INC_DIR)
 ASM_FLAGS   = $(COMMON_FLAGS) -I$(INC_DIR)
