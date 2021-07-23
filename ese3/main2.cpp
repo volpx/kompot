@@ -33,33 +33,6 @@ double V_rot(
 	return 0.5 * l * (l + 1) / (r * r);
 }
 
-// // Direct term
-// double U_r(
-// 	const double r, const double a, const double h,
-// 	const double rho[],const size_t M)
-// {
-// 	double u = 0;
-// 	double rp = a;
-
-// 	// Direct term integral
-// 	uint64_t m=0;
-// 	while(m < M && rp<=r)
-// 	{
-// 		u += h * (rp * rp * rho[m]);
-// 		m++;
-// 		rp = a + m * h;
-// 	}
-// 	u = u / r;
-// 	m--;
-// 	rp = a + m * h;
-// 	while(m < M)
-// 	{
-// 		u += h * rp * rho[m];
-// 		m++;
-// 		rp = a + m * h;
-// 	}
-// 	return 4 * M_PI * u;
-// }
 
 // Direct term
 double U_r(
@@ -123,14 +96,6 @@ double de_c(const double rho)
 	);
 	const double c3 = 1. + 1./den;
 
-	// return + c2 / (3 * std::pow(rho, 4./3)) * std::log(c3)
-	// 	   - (2 * A + c2 / std::pow(rho, 1./3)) / (den * den * c3) * 2 * A
-	// 	   * (+ beta[0] * std::sqrt(c1) / (6 * std::pow(rho, 7./6))
-	// 		  + beta[1] * c1 / (3 * std::pow(rho, 4./3))
-	// 		  + 0.5 * beta[2] * std::pow(c1 / rho,3./2)		
-	// 		  + 2. / 3 * beta[3] * c1 * c1 / std::pow(rho,5./3)
-	// 		);
-
 	return c2/(3. * rho13*rho)*std::log(c3)
 		- (2.*A+c2/(rho13))/(c3*den*den)*2.*A*
 	(
@@ -167,7 +132,7 @@ int main()
 	constexpr double r_s_Na = 3.93;
 	constexpr double r_s_K = 4.86;
 	constexpr double rs = r_s_Na;
-	#if 0
+	#if 1
 	constexpr uint32_t N = 8;
 	constexpr uint32_t lmax = 1;
 	constexpr int Nlevels = 2; // N = 8
@@ -183,7 +148,7 @@ int main()
 	constexpr int Enums[lmax + 1] = {2, 1, 1}; // N = 20
 	#endif
 
-	#if 1
+	#if 0
 	constexpr uint32_t N = 40;
 	constexpr int lmax = 3;
 	constexpr int Nlevels = 6; // N = 40
@@ -227,9 +192,9 @@ int main()
 	constexpr uint64_t ME = 1e3;
 
 	// Mixing parameter
-	constexpr double alpha = 1e-1;
+	constexpr double alpha = 1e-2;
 	// Accuracy
-	constexpr double epsilon = 1e-3;
+	constexpr double epsilon = 1e-4;
 
 	std::vector<double> ymax(ME);
 
@@ -451,17 +416,6 @@ int main()
 		step++;
 	}
 
-
-	// {
-	// std::ofstream file{"data/y_max.dat"};
-	// file << "E y_max \n";
-	// for (uint64_t m = 0; m < ME; m++)
-	// {
-	// 	file << vE[m] << ' ' << ymax[m] << '\n';
-	// }
-	// file.close();
-	// }
-
 	{
 		std::ofstream file{"data/numerov_sc.dat"};
 		file << "r rho V_l V_c V_x U_R V_Ext\n";
@@ -481,8 +435,22 @@ int main()
 				<< '\n';
 		}
 		file.close();
-	}	
-	
+	}
+
+	size_t m_Rc = static_cast<size_t>((Rc - a) / h);
+	for (size_t m = 0; m < M; m++)
+	{
+		rhor2[m]*=4*M_PI;
+		if (m < m_Rc)
+		{
+			rhor2[m] = 0;
+		}
+	}
+
+	double deltaN = integrator_simpson_cubic(rhor2, M, h);
+	double alphaN = std::pow(Rc, 3.) * (1 + deltaN / N);
+	std::cout << "DeltaN: " << deltaN << ' ' << "Alpha: " << alphaN << std::endl;
+
 	return 0;
 	
 }
