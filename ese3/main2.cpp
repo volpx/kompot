@@ -437,6 +437,7 @@ int main()
 		file.close();
 	}
 
+	// Polarizability estiamtion 
 	size_t m_Rc = static_cast<size_t>((Rc - a) / h);
 	for (size_t m = 0; m < M; m++)
 	{
