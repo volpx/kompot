@@ -15,10 +15,12 @@ LIB_DIR     = lib
 # Excecutables
 CPP         = g++
 C           = gcc
+MPICPP      = mpic++
+MPIC        = mpicc
 RM          = rm -f
 
 # Flags
-COMMON_FLAGS= -O3 -Wall -Wpedantic -Wextra -mavx2 -march=native -ffast-math
+COMMON_FLAGS= -O3 -Wall -Wpedantic -Wextra -mavx -march=native -ffast-math
 CXXFLAGS   = $(COMMON_FLAGS) -I$(INC_DIR) -std=c++14
 CFLAGS     = $(COMMON_FLAGS) -I$(INC_DIR)
 ASM_FLAGS   = $(COMMON_FLAGS) -I$(INC_DIR)
@@ -56,6 +58,10 @@ endif
 # Rules
 main1: $(OBJS) $(OBJ_DIR)/main1.o
 	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main2: $(OBJS) $(OBJ_DIR)/main2.o
+	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main3: $(OBJS) $(OBJ_DIR)/main3.o
+	$(MPICPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 # Mains rules
 $(OBJ_DIR)/%.o: %.cpp

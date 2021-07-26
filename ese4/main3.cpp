@@ -3,13 +3,13 @@
 #include "simulation.hpp"
 #include "optimize.hpp"
 
-#include "time.h"
-
 #include <cstdint>
 #include <cmath>
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <cstring>
+#include <mpi.h>
 
 // #include <static_math/cmath.h>
 
@@ -151,9 +151,39 @@ double get_potential(
 	return V;
 }
 
-int main()
+#define MPI_TAG_JOB 1
+struct Job{
+	const uint32_t id;
+	const double rho;
+	const double b;
+};
+
+int main(int argc, char** argv)
 {
-	srand(time(0));
+	// MPI initialization
+	MPI_Init(NULL, NULL);
+
+	// Get the number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+	// Get the rank of the process
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+	// Get the name of the processor
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
+	MPI_Finalize();
+
+	if (world_rank==0)
+	{
+		Job j{0,20,30};
+		MPI_Send(&j,sizeof(Job),MPI_BYTE,1,MPI_TAG_JOB,MPI_COMM_WORLD);
+	}
+	return 0;
 	std::cout << "VMC: 4He superfluideseese" << std::endl;
 
 	// Problem parameters
@@ -161,6 +191,12 @@ int main()
 	constexpr double sigma = 0.2556e-9;			   // m
 	constexpr double rho_experimental_r = 21.86e27;  // #/m^3
 	constexpr double m = 4.002602 * uni::Da_to_kg; // Kg
+
+	// Derived parameters
+	constexpr double hbar2_2m = uni::hbar_r * uni::hbar_r /
+								(2 * m * epsilon * sigma * sigma);
+	const double b0 = std::pow(16. / (25 * hbar2_2m), 0.1);
+	constexpr double rho_experimental = rho_experimental_r * sigma * sigma * sigma;
 
 	// Number of VMC steps
 	constexpr uint32_t S = 1e6;
@@ -170,16 +206,9 @@ int main()
 	// Correlations steps
 	constexpr size_t Scorr = 1e3;
 	// Number of particles
-	constexpr uint32_t N = 4*2*2*2;
+	constexpr uint32_t N = 4 * 2 * 2 * 2;
 	// Averaging length
 	constexpr uint32_t K = 1e4;
-
-	// Derived parameters
-	constexpr double rho_experimental = rho_experimental_r * sigma * sigma * sigma;
-	constexpr double hbar2_2m = uni::hbar_r * uni::hbar_r /
-								(2 * m * epsilon * sigma * sigma);
-	const double L = std::cbrt(N / rho_experimental);
-	const double b0 = std::pow(16. / (25 * hbar2_2m), 0.1);
 
 	// Number of variational parameters
 	constexpr uint32_t M = 20;
@@ -187,11 +216,17 @@ int main()
 	const double ba = 1.05;
 	const double bb = 1.35;
 	const double bh = (bb-ba)/(M-1);
+	// Density mesh
+	constexpr uint32_t G = 6;
+	const double rhoa = 0.2;
+	const double rhob = rho_experimental;
+	const double rhoh = (rhob - rhoa) / (G - 1);
 
-	const double deltamax = L / 4;
-	const double deltamin = 1e-4;
-	double delta = 0.324034;
-
+	std::vector<Job> jobs;
+	jobs.reserve(M*G);
+	for (uint32_t g = 0; g < G; g++)
+		for (uint32_t m = 0; m < M; m++)
+			jobs.emplace_back(Job{g*M+m,rhoa+g*rhoh,ba+m*bh});
 
 	std::cout
 		<< "Problem constants:"
@@ -201,12 +236,8 @@ int main()
 		<< "\nsigma: " << sigma
 		<< "\nm: " << m
 		<< "\nrho_exp: " << rho_experimental
-		<< "\nL: " << L
-		<< "\nDelta_max: " << deltamax
 		<< "\nhbar2_2m: " << hbar2_2m
 		<< "\nb0: " << b0
-		<< "\ndelta0: " << delta
-		<< "\nV_offset: " << -V_LJ(L / 2)
 		<< "\n"
 		<< std::endl;
 
@@ -223,36 +254,52 @@ int main()
 	Vec3D *pos1 = posa;
 	Vec3D *pos2 = posb;
 	Vec3D *tmp = posa;
-	double new_prob, b, P1, P2;
+	double new_prob, P1, P2;
 	CArray probs(K);
-	
+	double delta=0.324034;
+	uint32_t tries=0;
+
 	// Autocorrelation
 	double lambda[3];
 	double *autocorr = new double[Scorr];
 
 	// Energy output file
-	std::ofstream file{"data/E.dat"};
-	file << "b E dEavg EJF dEJFavg" << '\n';
+	std::ofstream file{"data/E_rhovar_mpi.dat"};
+	file << "rho b E dEavg EJF dEJFavg" << '\n';
+	for (uint32_t job_id = 0; job_id < jobs.size(); job_id++)
+	{	
+		// Get the job
+		Job job = jobs[job_id];
+		// Track the number of tries for each job
+		tries++;
 
-	for (uint32_t m = 0; m < M; m++)
-	{
-		b = ba + m * bh;
-		std::cout << "m:" << m << " b: " << b << std::endl;
+		const double L = std::cbrt(N / job.rho);
+		const double deltamax = L / 4;
+		const double deltamin = 1e-4;
+		// Set the delta only on the first try
+		if(tries==1)
+			delta = 0.324034;
+		
+		std::cout
+			<< "id: " << job.id
+			<< " rho: " << job.rho
+			<< " b: " << job.b
+			<< " try: "<< tries
+			<< std::endl;
 		// Particles initialization
 		init_lattice(pos1, N, L, 2, 4);
 		apply_periodic_bounds(pos1, N, L);
-		P1 = Density(pos1, N, b, L);
+		P1 = Density(pos1, N, job.b, L);
 
 		Es.fill(0);
 		EJFs.fill(0);
 		probs.fill(0);
-		delta = 0.324034;
 
 		// Compute new quantities
-		T = hbar2_2m * get_local_T(pos1, N, b, L);
-		TJF = hbar2_2m * get_local_TJF(pos1, N, b, L);
+		T = hbar2_2m * get_local_T(pos1, N, job.b, L);
+		TJF = hbar2_2m * get_local_TJF(pos1, N, job.b, L);
 		V = get_potential(pos1, N, L);
-		std::cout 
+		std::cout
 			<< "\nInitial K_L: " << T
 			<< "\nInitial K_JF: " << TJF
 			<< "\nInitial potential: " << V
@@ -263,7 +310,7 @@ int main()
 		{
 			// Step s
 			// Print progress
-			if(s % (S/10) == 0)
+			if (s % (S / 10) == 0)
 			{
 				std::cout << s << ' ' << average(probs.data, K) << ' ' << delta << std::endl;
 			}
@@ -280,7 +327,7 @@ int main()
 			apply_periodic_bounds(pos2, N, L);
 
 			// Acception-rejection method
-			P2 = Density(pos2, N, b, L);
+			P2 = Density(pos2, N, job.b, L);
 			new_prob = P2 / P1;
 			probs[s] = new_prob;
 
@@ -289,8 +336,8 @@ int main()
 				// Accept the new state
 
 				// Compute new quantities
-				T = hbar2_2m * get_local_T(pos2, N, b, L);
-				TJF = hbar2_2m * get_local_TJF(pos2, N, b, L);
+				T = hbar2_2m * get_local_T(pos2, N, job.b, L);
+				TJF = hbar2_2m * get_local_TJF(pos2, N, job.b, L);
 				V = get_potential(pos2, N, L);
 
 				tmp = pos2;
@@ -311,7 +358,8 @@ int main()
 				if (s > 0 && s % K == 0)
 				{
 					delta *= (1 + 5e-1 * (average(probs.data, K) / 0.8 - 1));
-					delta = (delta > deltamax) ? deltamax : (delta< deltamin) ? deltamin: delta;
+					delta = (delta > deltamax) ? deltamax : (delta < deltamin) ? deltamin
+																				: delta;
 					// std::cout << s<< ' '<< average(probs.data, K) << ' ' << delta << std::endl;
 				}
 			}
@@ -319,41 +367,49 @@ int main()
 
 		// autocorrelation
 		// E
-		lambda[0]=1;
-		lambda[1]=0.2;
-		lambda[2]=0;
+		lambda[0] = 1;
+		lambda[1] = 0.2;
+		lambda[2] = 0;
 		autocorrelation(autocorr, Scorr, Es.data, Es.N);
 		fit_to_nexp(lambda, autocorr, Scorr);
-		std::cout << lambda[1] << std::endl;
 		double Escorr = 1. / lambda[1];
-		double Eavg = average(Es.data, Sdata);
-		double DEavg = Escorr / (Es.N) * variance(Es.data, Es.N, 1);
+		double Eavg = average(Es.data, Sdata) / N;
+		double DEavg = Escorr / (Es.N) * variance(Es.data, Es.N, 1) / N;
 		// EJF
-		lambda[0]=1;
-		lambda[1]=0.2;
-		lambda[2]=0;
+		lambda[0] = 1;
+		lambda[1] = 0.2;
+		lambda[2] = 0;
 		autocorrelation(autocorr, Scorr, EJFs.data, EJFs.N);
 		fit_to_nexp(lambda, autocorr, Scorr);
 		double EJFscorr = 1. / lambda[1];
-		double EJFavg = average(EJFs.data, Sdata);
-		double DEJFavg = EJFscorr / (EJFs.N) * variance(EJFs.data, EJFs.N, 1);
+		double EJFavg = average(EJFs.data, Sdata)/N;
+		double DEJFavg = EJFscorr / (EJFs.N) * variance(EJFs.data, EJFs.N, 1) / N;
 
 		std::cout
-			<<   "Probs:" << average(probs.data,K) <<' ' << "Delta: " << delta
-			<< "\nLocal energy: " << Eavg/N << " +/- " << std::sqrt(DEavg)/N << " ("<<Escorr<<")"
-			<< "\nJF    energy: " << EJFavg/N << " +/- " << std::sqrt(DEJFavg)/N<< " ("<<EJFscorr<<")"
+			<< "Probs:" << average(probs.data, K) << ' ' << "Delta: " << delta
+			<< "\nLocal energy: " << Eavg << " +/- " << std::sqrt(DEavg) << " (" << Escorr << ")"
+			<< "\nJF    energy: " << EJFavg << " +/- " << std::sqrt(DEJFavg) << " (" << EJFscorr << ")"
 			<< "\n"
 			<< std::endl;
 
-
-		// Save data
-		file 
-			<< b << ' '
-			<< Eavg/N << ' '
-			<< std::sqrt(DEavg)/N << ' '
-			<< EJFavg/N <<' '
-			<< std::sqrt(DEJFavg)/N
-			<< '\n';
+		if(std::abs(Eavg-EJFavg) < 0.1 || tries > 20)
+		{
+			// Save data if they agree somewhat
+			file
+				<< job.rho << ' '
+				<< job.b << ' '
+				<< Eavg << ' '
+				<< std::sqrt(DEavg) << ' '
+				<< EJFavg << ' '
+				<< std::sqrt(DEJFavg)
+				<< '\n';
+			tries=0;
+		}
+		else
+		{
+			// Redo the job mantainig delta
+			job_id--;
+		}
 	}
 
 	file.close();
@@ -361,6 +417,9 @@ int main()
 	delete[] posa;
 	delete[] posb;
 	delete[] autocorr;
+
+	// Finalize the MPI environment.
+    MPI_Finalize();
 
 	return 0;
 }

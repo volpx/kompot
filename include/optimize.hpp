@@ -14,7 +14,7 @@ extern "C"
  * y = l0 * exp(+l1 * x) + l2 
  *
  */
-int fit_to_pexp(double lambda[3],
+int fit_to_exp(double lambda[3],
 			   const double datay[],
 			   const size_t N,
 			   const double datax[] = nullptr);

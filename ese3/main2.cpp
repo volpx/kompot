@@ -438,11 +438,10 @@ int main()
 	}
 
 	// Polarizability estiamtion 
-	size_t m_Rc = static_cast<size_t>((Rc - a) / h);
 	for (size_t m = 0; m < M; m++)
 	{
-		rhor2[m]*=4*M_PI;
-		if (m < m_Rc)
+		rhor2[m]*= 4 * M_PI;
+		if (a + m * h < Rc)
 		{
 			rhor2[m] = 0;
 		}
