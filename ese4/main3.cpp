@@ -282,17 +282,19 @@ int main(int, char**)
 				MPI_COMM_WORLD);
 		}
 
-		// Get last result
-		MPI_Recv(
-			&job,JOB_SIZE,MPI_BYTE,MPI_ANY_SOURCE,
-			MPI_RESULT_TAG,MPI_COMM_WORLD,
-			&status);
-		MPI_Get_count(&status,MPI_BYTE,&bytes_transferred);
-		if(bytes_transferred)
-		{
-			// Save data
-			jobs[job.id]=job;
-		}
+		// Get last results
+		do{
+			MPI_Recv(
+				&job,JOB_SIZE,MPI_BYTE,MPI_ANY_SOURCE,
+				MPI_RESULT_TAG,MPI_COMM_WORLD,
+				&status);
+			MPI_Get_count(&status,MPI_BYTE,&bytes_transferred);
+			if(bytes_transferred)
+			{
+				// Save data
+				jobs[job.id]=job;
+			}
+		}while(bytes_transferred);
 		
 		// Save
 		// Energy output file
