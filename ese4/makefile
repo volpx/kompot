@@ -64,6 +64,9 @@ main3: $(OBJS) $(OBJ_DIR)/main3.o
 	$(MPICPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 # Mains rules
+$(OBJ_DIR)/main3.o: main3.cpp
+	$(MPICPP) -c -o $@ $< $(CXXFLAGS)
+
 $(OBJ_DIR)/%.o: %.cpp
 	$(CPP) -c -o $@ $< $(CXXFLAGS)
 
@@ -72,6 +75,7 @@ $(OBJ_DIR)/%.o: %.c
 
 $(OBJ_DIR)/%.o: %.asm
 	$(C) -c -o $@ $< $(ASM_FLAGS)
+
 
 # Obj rules
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
