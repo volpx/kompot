@@ -130,6 +130,7 @@ double get_potential(
 	double d;
 	Vec3D alias;
 	double V = 0;
+	const double V_offset = -V_LJ(L/2);
 
 	// Sum on the pairs
 	for (size_t i{0}; i < N; i++)
@@ -179,6 +180,7 @@ int main()
 	constexpr double hbar2_2m = uni::hbar_r * uni::hbar_r /
 								(2 * m * epsilon * sigma * sigma);
 	const double L = std::cbrt(N / rho_experimental);
+	const double E_correction = 8. / 3 * M_PI * rho_experimental * (1. / 3 * std::pow(L / 2, -9.) - std::pow(L / 2, -3.));
 	const double b0 = std::pow(16. / (25 * hbar2_2m), 0.1);
 
 	// Number of variational parameters
@@ -326,8 +328,8 @@ int main()
 		fit_to_nexp(lambda, autocorr, Scorr);
 		std::cout << lambda[1] << std::endl;
 		double Escorr = 1. / lambda[1];
-		double Eavg = average(Es.data, Sdata);
-		double DEavg = Escorr / (Es.N) * variance(Es.data, Es.N, 1);
+		double Eavg = average(Es.data, Sdata)/N + E_correction;
+		double DEavg = Escorr / (Es.N) * variance(Es.data, Es.N, 1)/N;
 		// EJF
 		lambda[0]=1;
 		lambda[1]=0.2;
@@ -335,13 +337,13 @@ int main()
 		autocorrelation(autocorr, Scorr, EJFs.data, EJFs.N);
 		fit_to_nexp(lambda, autocorr, Scorr);
 		double EJFscorr = 1. / lambda[1];
-		double EJFavg = average(EJFs.data, Sdata);
-		double DEJFavg = EJFscorr / (EJFs.N) * variance(EJFs.data, EJFs.N, 1);
+		double EJFavg = average(EJFs.data, Sdata)/N + E_correction;
+		double DEJFavg = EJFscorr / (EJFs.N) * variance(EJFs.data, EJFs.N, 1)/N;
 
 		std::cout
 			<<   "Probs:" << average(probs.data,K) <<' ' << "Delta: " << delta
-			<< "\nLocal energy: " << Eavg/N << " +/- " << std::sqrt(DEavg)/N << " ("<<Escorr<<")"
-			<< "\nJF    energy: " << EJFavg/N << " +/- " << std::sqrt(DEJFavg)/N<< " ("<<EJFscorr<<")"
+			<< "\nLocal energy: " << Eavg << " +/- " << std::sqrt(DEavg) << " ("<<Escorr<<")"
+			<< "\nJF    energy: " << EJFavg << " +/- " << std::sqrt(DEJFavg)<< " ("<<EJFscorr<<")"
 			<< "\n"
 			<< std::endl;
 

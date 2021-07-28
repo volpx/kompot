@@ -62,9 +62,14 @@ main2: $(OBJS) $(OBJ_DIR)/main2.o
 	$(CPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 main3: $(OBJS) $(OBJ_DIR)/main3.o
 	$(MPICPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
+main4: $(OBJS) $(OBJ_DIR)/main4.o
+	$(MPICPP) -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
 
 # Mains rules
 $(OBJ_DIR)/main3.o: main3.cpp
+	$(MPICPP) -c -o $@ $< $(CXXFLAGS)
+
+$(OBJ_DIR)/main4.o: main4.cpp
 	$(MPICPP) -c -o $@ $< $(CXXFLAGS)
 
 $(OBJ_DIR)/%.o: %.cpp

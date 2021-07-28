@@ -9,8 +9,26 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <mpi.h>
 
 // #include <static_math/cmath.h>
+
+#define MPI_FINISHED_TAG 2
+
+struct Job{
+	// Input
+	uint32_t id;
+	double rho;
+	double b;
+	// Outputs
+	double E=0;
+	double stdE=0;
+	double EJF=0;
+	double stdEJF=0;
+};
+
+#define JOB_SIZE sizeof(Job)
+#define JOBP_SIZE sizeof(Job*)
 
 // LJ potential
 double V_LJ(const double r)
@@ -129,8 +147,7 @@ double get_potential(
 	double d;
 	Vec3D alias;
 	double V = 0;
-	const double rho = N / (L * L * L);
-	const double V_offset = -V_LJ(L/2);
+	const double V_offset = -V_LJ(L / 2);
 
 	// Sum on the pairs
 	for (size_t i{0}; i < N; i++)
@@ -152,10 +169,29 @@ double get_potential(
 	return V;
 }
 
-int main()
+int main(int argc, char** argv)
 {
-	std::cout << "VMC: 4He superfluideseese" << std::endl;
+	// MPI initialization
+	MPI_Init(&argc, &argv);
 
+	// Get the number of processes
+	int world_size;
+	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+	// Get the rank of the process
+	int rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+	// MPI stuff
+	MPI_Status status;
+	int bytes_transferred;
+
+	std::cout 
+		<< "VMC: 4He superfluideseese"
+		<< " rank: "<< rank 
+		<< std::endl;
+
+	
 	// Problem parameters
 	constexpr double epsilon = uni::kB_r * 10.22;  // J
 	constexpr double sigma = 0.2556e-9;			   // m
@@ -192,30 +228,35 @@ int main()
 	const double rhob = 0.9*rho_experimental;
 	const double rhoh = (rhob - rhoa) / (G - 1);
 	
-	struct Job{
-		const uint32_t id;
-		const double rho;
-		const double b;
-	};
+
+	constexpr uint32_t Njobs=M*G;
+	const uint32_t job_id_padding = Njobs % world_size;
+	const uint32_t job_id_start = (rank != 0) ? Njobs / world_size * rank + job_id_padding : 0;
+	const uint32_t job_id_stop = Njobs / world_size * (rank + 1) + job_id_padding;
+	const uint32_t MyNjobs=job_id_stop - job_id_start;
+
 
 	std::vector<Job> jobs;
-	jobs.reserve(M*G);
+	jobs.reserve(Njobs);
 	for (uint32_t g = 0; g < G; g++)
 		for (uint32_t m = 0; m < M; m++)
 			jobs.emplace_back(Job{g*M+m,rhoa+g*rhoh,ba+m*bh});
 
-	std::cout
-		<< "Problem constants:"
-		<< "\nS: " << S
-		<< "\nN: " << N
-		<< "\nepsilon: " << epsilon
-		<< "\nsigma: " << sigma
-		<< "\nm: " << m
-		<< "\nrho_exp: " << rho_experimental
-		<< "\nhbar2_2m: " << hbar2_2m
-		<< "\nb0: " << b0
-		<< "\n"
-		<< std::endl;
+	if (rank==0)
+	{
+		std::cout
+			<< "Problem constants:"
+			<< "\nNjobs: " << Njobs
+			<< "\nS: " << S
+			<< "\nN: " << N
+			<< "\nepsilon: " << epsilon
+			<< "\nsigma: " << sigma
+			<< "\nm: " << m
+			<< "\nrho_exp: " << rho_experimental
+			<< "\nhbar2_2m: " << hbar2_2m
+			<< "\n"
+			<< std::endl;
+	}
 
 	// Final quantities (sums)
 	double T = 0;
@@ -239,13 +280,11 @@ int main()
 	double lambda[3];
 	double *autocorr = new double[Scorr];
 
-	// Energy output file
-	std::ofstream file{"data/E_rhovar.dat"};
-	file << "rho b E dEavg EJF dEJFavg" << '\n';
-	for (uint32_t job_id = 0; job_id < jobs.size(); job_id++)
+
+	for (uint32_t job_id = job_id_start; job_id < job_id_stop; job_id++)
 	{	
 		// Get the job
-		Job job = jobs[job_id];
+		Job &job = jobs[job_id];
 		// Track the number of tries for each job
 		tries++;
 
@@ -258,11 +297,13 @@ int main()
 			delta = 0.324034;
 		
 		std::cout
-			<< "id: " << job.id
+			<< "rank: " << rank
+			<< " id: " << job.id
 			<< " rho: " << job.rho
 			<< " b: " << job.b
 			<< " try: "<< tries
 			<< std::endl;
+
 		// Particles initialization
 		init_lattice(pos1, N, L, 2, 4);
 		apply_periodic_bounds(pos1, N, L);
@@ -276,21 +317,21 @@ int main()
 		T = hbar2_2m * get_local_T(pos1, N, job.b, L);
 		TJF = hbar2_2m * get_local_TJF(pos1, N, job.b, L);
 		V = get_potential(pos1, N, L);
-		std::cout
-			<< "\nInitial K_L: " << T
-			<< "\nInitial K_JF: " << TJF
-			<< "\nInitial potential: " << V
-			<< std::endl;
+		// std::cout
+		// 	<< "\nInitial K_L: " << T
+		// 	<< "\nInitial K_JF: " << TJF
+		// 	<< "\nInitial potential: " << V
+		// 	<< std::endl;
 
 		// Parameter m
 		for (uint32_t s = 0; s < S; s++)
 		{
 			// Step s
 			// Print progress
-			if (s % (S / 10) == 0)
-			{
-				std::cout << s << ' ' << average(probs.data, K) << ' ' << delta << std::endl;
-			}
+			// if (s % (S / 10) == 0)
+			// {
+			// 	std::cout << s << ' ' << average(probs.data, K) << ' ' << delta << std::endl;
+			// }
 
 			// Previus positions in pos1
 			// New positions in pos2
@@ -362,24 +403,22 @@ int main()
 		double EJFavg = average(EJFs.data, Sdata)/N + E_correction;
 		double DEJFavg = EJFscorr / (EJFs.N) * variance(EJFs.data, EJFs.N, 1) / N;
 
-		std::cout
-			<< "Probs:" << average(probs.data, K) << ' ' << "Delta: " << delta
-			<< "\nLocal energy: " << Eavg << " +/- " << std::sqrt(DEavg) << " (" << Escorr << ")"
-			<< "\nJF    energy: " << EJFavg << " +/- " << std::sqrt(DEJFavg) << " (" << EJFscorr << ")"
-			<< "\n"
-			<< std::endl;
+		// std::cout
+		// 	<< "Probs:" << average(probs.data, K) << ' ' << "Delta: " << delta
+		// 	<< "\nLocal energy: " << Eavg << " +/- " << std::sqrt(DEavg) << " (" << Escorr << ")"
+		// 	<< "\nJF    energy: " << EJFavg << " +/- " << std::sqrt(DEJFavg) << " (" << EJFscorr << ")"
+		// 	<< "\n"
+		// 	<< std::endl;
 
 		if(std::abs(Eavg-EJFavg) < 0.08 || tries > 20)
 		{
 			// Save data if they agree somewhat
-			file
-				<< job.rho << ' '
-				<< job.b << ' '
-				<< Eavg << ' '
-				<< std::sqrt(DEavg) << ' '
-				<< EJFavg << ' '
-				<< std::sqrt(DEJFavg)
-				<< '\n';
+			// Populate the job struct
+			job.E=Eavg;
+			job.stdE=std::sqrt(DEavg) ;
+			job.EJF=EJFavg;
+			job.stdEJF=std::sqrt(DEJFavg);
+
 			tries=0;
 		}
 		else
@@ -389,38 +428,52 @@ int main()
 		}
 	}
 
-	file.close();
-
 	delete[] posa;
 	delete[] posb;
 	delete[] autocorr;
 
+	if(rank==0)
+	{
+		// Wait for the ranks to finish
+		int ranks_finished=1;
+		do{
+			MPI_Probe(MPI_ANY_SOURCE,MPI_FINISHED_TAG,MPI_COMM_WORLD,&status);
+			MPI_Get_count(&status,MPI_BYTE,&bytes_transferred);
+			std::cout 
+			<< "Received " << bytes_transferred 
+			<< " from " << status.MPI_SOURCE << std::endl;
+			MPI_Recv(
+				&jobs[Njobs / world_size * status.MPI_SOURCE + job_id_padding],
+				bytes_transferred, MPI_BYTE, status.MPI_SOURCE,
+				MPI_FINISHED_TAG, MPI_COMM_WORLD, &status);
+			ranks_finished++;
+		}while(ranks_finished != world_size);
+
+		// Energy output file
+		std::cout << "Writing file" << std::endl;
+		std::ofstream file{"data/E_rhovar_mpi.dat"};
+		file << "rho b E dEavg EJF dEJFavg" << '\n';
+		for(uint32_t job_id=0;job_id<Njobs;job_id++)
+		{
+			Job &job=jobs[job_id];
+			file
+				<< job.rho << ' '
+				<< job.b << ' '
+				<< job.E << ' '
+				<< job.stdE << ' '
+				<< job.EJF << ' '
+				<< job.stdEJF
+				<< '\n';
+		}
+		file.close();
+	}
+	else{
+		MPI_Send(&jobs[job_id_start],MyNjobs*JOB_SIZE,MPI_BYTE,
+			0,MPI_FINISHED_TAG,MPI_COMM_WORLD);
+	}
+
+	std::cout << "rank " << rank << " finished"<<std::endl; 
+
+	MPI_Finalize();
 	return 0;
 }
-		#if 0
-		// Save data
-		{
-			std::ofstream file{"data/T.dat"};
-			file << "step T TJf V" << '\n';
-			for (uint32_t s = 0; s < Es.N; s++)
-			{
-				file 
-					<< s << ' '
-					<< Es.data[s] << ' '
-					<< EJFs.data[s] << '\n';
-			}
-			file.close();
-		}
-		#endif
-		#if 0
-		// Save autocorrelation
-		{
-			std::ofstream file{"data/correlation.dat"};
-			file << "step Ecorr "<< '\n';
-			for (uint32_t s = 0; s < Scorr; s++)
-			{
-				file<< s << ' '<< autocorr[s] << '\n';
-			}
-			file.close();
-		}
-		#endif

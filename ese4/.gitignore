@@ -2,6 +2,7 @@
 main1
 main2
 main3
+main4
 
 # Ignore output data but not cherry picked ones
 !data/

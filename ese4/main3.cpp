@@ -1,4 +1,4 @@
-// Run with "mpirun -n #threads+1 ./main3"
+//dd Run with "mpirun -n #threads+1 ./main3"
 #include "uniconst.hpp"
 #include "vec3d.hpp"
 #include "simulation.hpp"
@@ -149,6 +149,8 @@ double get_potential(
 	double d;
 	Vec3D alias;
 	double V = 0;
+	const double rho = N / (L * L * L);
+	const double Voffset = -8. / 3 * M_PI * rho * (1. / 3 * std::pow(L / 2, -9.) - std::pow(L / 2, -3.));
 
 	// Sum on the pairs
 	for (size_t i{0}; i < N; i++)
@@ -162,7 +164,7 @@ double get_potential(
 			// and also compute the correct alias
 			if ((d = compute_alias(pos[i], alias, L)) > 0)
 			{
-				V += V_LJ(d);
+				V += V_LJ(d) + Voffset;
 			}
 			// Else: no interaction, un-perfect packing of spheres
 		}
@@ -170,7 +172,7 @@ double get_potential(
 	return V;
 }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
 	// MPI initialization
 	MPI_Init(NULL, NULL);
@@ -240,7 +242,8 @@ int main(int, char**)
 			<< std::endl;
 		
 		// Define jobs
-		Job jobs[M*G];
+		uint32_t Njobs=M*G,Njobscompleted=0;
+		Job jobs[Njobs];
 		for (uint32_t g = 0; g < G; g++)
 			for (uint32_t m = 0; m < M; m++)
 				jobs[g*M+m]=std::move(Job{g*M+m,rhoa+g*rhoh,ba+m*bh});
@@ -251,7 +254,7 @@ int main(int, char**)
 		int bytes_transferred;
 
 		// Start issuing jobs
-		for (uint32_t job_id = 0; job_id < M*G; job_id++)
+		for (uint32_t job_id = 0; job_id < Njobs; job_id++)
 		{
 			// Get slaves availability
 			std::cout<<"Rank "<<world_rank<<" receiving availability."<<std::endl;
@@ -264,6 +267,7 @@ int main(int, char**)
 			{
 				// Save data
 				jobs[job.id]=job;
+				Njobscompleted++;
 			}
 			// Send job
 			std::cout 
@@ -284,17 +288,18 @@ int main(int, char**)
 
 		// Get last results
 		do{
-			MPI_Recv(
-				&job,JOB_SIZE,MPI_BYTE,MPI_ANY_SOURCE,
-				MPI_RESULT_TAG,MPI_COMM_WORLD,
-				&status);
+			MPI_Probe(MPI_ANY_SOURCE,MPI_RESULT_TAG,MPI_COMM_WORLD,&status);
 			MPI_Get_count(&status,MPI_BYTE,&bytes_transferred);
 			if(bytes_transferred)
 			{
+				MPI_Recv(&job,JOB_SIZE,MPI_BYTE,MPI_ANY_SOURCE,
+					MPI_RESULT_TAG,MPI_COMM_WORLD,
+					&status);
 				// Save data
 				jobs[job.id]=job;
+				Njobscompleted++;
 			}
-		}while(bytes_transferred);
+		}while(Njobscompleted!=Njobs);
 		
 		// Save
 		// Energy output file
@@ -485,6 +490,7 @@ int main(int, char**)
 				// Notify master I've finished the work
 				MPI_Send(&my_job,JOB_SIZE,MPI_BYTE,0,MPI_RESULT_TAG,MPI_COMM_WORLD);
 				// And receive a new job
+				// TODO: problem when finished
 				MPI_Recv(&my_job,JOB_SIZE,MPI_BYTE,0,MPI_JOB_TAG,MPI_COMM_WORLD,&status);
 				MPI_Get_count(&status,MPI_BYTE,&bytes_transferred);
 				tries=0;
