@@ -39,7 +39,15 @@ int main()
 	// Problem constants
 	constexpr double r_s_Na = 3.93;
 	constexpr double r_s_K = 4.86;
-	constexpr double rs = r_s_K;
+	constexpr double rs = r_s_Na;
+
+	#if 0
+	constexpr uint32_t N = 2;
+	constexpr uint32_t lmax = 0;
+	constexpr int Nlevels = 1; // N = 2
+	constexpr int is[Nlevels] = {0}; // N = 2
+	constexpr int Enums[lmax + 1] = {1}; // N = 2
+	#endif
 
 	#if 1
 	constexpr uint32_t N = 8;
@@ -49,7 +57,7 @@ int main()
 	constexpr int Enums[lmax + 1] = {1, 1}; // N = 8
 	#endif
 
-	#if 0 
+	#if 0
 	constexpr uint32_t N = 20;
 	constexpr int lmax = 2;
 	constexpr int Nlevels = 4; // N = 20
@@ -261,9 +269,8 @@ int main()
 	std::cout << Eeigen << " " << Efunc << std::endl;
 
 	{
-	std::ofstream file{"data/numerov.dat"};
-	file << Eeigen << ' ' << Efunc << '\n';
-	file << "r phi rho \n";
+	std::ofstream file{"data/save/numerov_Na_40.dat"};
+	file << "r rho \n";
 	for (uint64_t m = 0; m < M; m++)
 	{
 		file << a + m * h;
